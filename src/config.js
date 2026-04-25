@@ -3,10 +3,15 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
+if (!process.env.ADMIN_INIT_PASSWORD) {
+  console.error('FATAL: ADMIN_INIT_PASSWORD 环境变量未设置，请在 .env 或云函数配置中设置');
+  process.exit(1);
+}
+
 const config = {
   envId: process.env.CLOUDBASE_ENV_ID,
   jwtSecret: process.env.JWT_SECRET,
-  adminInitPassword: process.env.ADMIN_INIT_PASSWORD || 'admin123',
+  adminInitPassword: process.env.ADMIN_INIT_PASSWORD,
 
   // 限流配置
   rateLimit: {

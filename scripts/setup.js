@@ -17,7 +17,11 @@ const COLLECTIONS = [
 
 async function main() {
   const envId = process.env.CLOUDBASE_ENV_ID;
-  const password = process.env.ADMIN_INIT_PASSWORD || 'admin123';
+  const password = process.env.ADMIN_INIT_PASSWORD;
+  if (!password) {
+    console.error('错误: ADMIN_INIT_PASSWORD 环境变量未设置');
+    process.exit(1);
+  }
 
   if (!envId) {
     console.error('请设置 CLOUDBASE_ENV_ID 环境变量');
