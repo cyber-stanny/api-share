@@ -1,0 +1,9 @@
+#!/bin/bash
+# CloudBase HTTP function bootstrap script
+# For HTTP functions, the app needs to listen on the PORT provided by the environment
+export SERVERLESS=true
+node -e "
+const app = require('./app');
+const port = process.env.PORT || 9000;
+app.listen(port, () => console.log('Server started on port ' + port));
+"

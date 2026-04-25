@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Share · Takram 风格原型</title>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; }
+    body {
+      font-family: 'Noto Sans JP', -apple-system, sans-serif;
+      background: #EDE9E3;
+      color: #2D2D2D;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root { min-height: 100vh; }
+    input:focus { outline: none; }
+
+    :root {
+      --primary: #6B8F71;
+      --primary-light: #E8F0E9;
+      --secondary: #C47A5A;
+      --secondary-light: #F5E8E0;
+      --bg: #F7F4EE;
+      --surface: #FFFFFF;
+      --text: #2D2D2D;
+      --muted: #9A9590;
+      --border: #E8E4DE;
+      --success: #6B8F71;
+      --warning: #C47A5A;
+      --danger: #C75B5B;
+      --serif: 'Noto Serif JP', 'Source Serif 4', Georgia, serif;
+      --sans: 'Noto Sans JP', -apple-system, sans-serif;
+      --mono: 'JetBrains Mono', 'SF Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ─── Design Tokens ───
+    const D = {
+      primary: '#6B8F71',
+      primaryLight: '#E8F0E9',
+      primaryMid: '#B5CFC0',
+      secondary: '#C47A5A',
+      secondaryLight: '#F5E8E0',
+      bg: '#F7F4EE',
+      surface: '#FFFFFF',
+      text: '#2D2D2D',
+      muted: '#9A9590',
+      lightMuted: '#C5C0BA',
+      border: '#E8E4DE',
+      success: '#6B8F71',
+      warning: '#C47A5A',
+      danger: '#C75B5B',
+      serif: "'Noto Serif JP', Georgia, serif",
+      sans: "'Noto Sans JP', -apple-system, sans-serif",
+      mono: "'JetBrains Mono', monospace",
+    };
+
+    // ─── Shared Components ───
+
+    function BrowserWindow({ title, url, width = 960, height = 640, accent, children }) {
+      return (
+        <div style={{
+          display: 'inline-block', background: '#fff', borderRadius: 12,
+          overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04)',
+        }}>
+          <div style={{
+            background: '#EDE9E3', padding: '8px 10px 0',
+            userSelect: 'none',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', paddingBottom: 8, marginRight: 6 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }}/>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }}/>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }}/>
+              </div>
+              <div style={{
+                background: '#fff', padding: '5px 20px 5px 10px',
+                borderTopLeftRadius: 8, borderTopRightRadius: 8,
+                fontSize: 11, color: '#555', fontFamily: D.sans,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: accent || D.primary, flexShrink: 0 }}/>
+                <span>{title}</span>
+              </div>
+            </div>
+          </div>
+          <div style={{
+            background: '#fff', padding: '5px 10px',
+            display: 'flex', alignItems: 'center', gap: 8,
+            borderBottom: `1px solid ${D.border}`,
+          }}>
+            <div style={{
+              flex: 1, background: '#F7F4EE', borderRadius: 999, padding: '4px 10px',
+              fontSize: 11, color: D.muted, fontFamily: D.sans,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ fontSize: 10 }}>&#128274;</span>
+              <span>{url}</span>
+            </div>
+          </div>
+          <div style={{
+            position: 'relative', overflow: 'auto',
+            background: D.bg, width, height,
+          }}>{children}</div>
+        </div>
+      );
+    }
+
+    function StatCard({ label, value, sub, accent, small }) {
+      return (
+        <div style={{
+          padding: small ? 12 : 16, background: D.surface, borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          borderTop: accent ? `2px solid ${accent}` : `2px solid transparent`,
+        }}>
+          <div style={{
+            fontSize: small ? 9 : 10, color: D.muted, fontWeight: 500,
+            letterSpacing: '0.06em', marginBottom: small ? 2 : 4,
+          }}>{label}</div>
+          <div style={{
+            fontSize: small ? 16 : 22, fontWeight: 600,
+            fontFamily: D.mono, color: D.text,
+          }}>{value}</div>
+          {sub && <div style={{ fontSize: small ? 9 : 10, color: D.muted, marginTop: 2 }}>{sub}</div>}
+        </div>
+      );
+    }
+
+    function Badge({ label, color, textColor }) {
+      return (
+        <span style={{
+          display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+          background: color, color: textColor, fontSize: 10, fontWeight: 500,
+          fontFamily: D.sans,
+        }}>{label}</span>
+      );
+    }
+
+    function MiniBar({ value, max, color = D.primary, height = 4 }) {
+      const pct = Math.min((value / max) * 100, 100);
+      return (
+        <div style={{
+          width: '100%', height, background: D.primaryLight,
+          borderRadius: height, overflow: 'hidden',
+        }}>
+          <div style={{
+            width: `${pct}%`, height: '100%', background: color,
+            borderRadius: height, transition: 'width 0.5s ease',
+          }}/>
+        </div>
+      );
+    }
+
+    function Btn({ children, primary, small, style: extra }) {
+      const base = {
+        padding: small ? '5px 14px' : '8px 20px',
+        borderRadius: 8, fontSize: small ? 12 : 13, fontWeight: 500,
+        fontFamily: D.sans, cursor: 'pointer', border: 'none',
+        transition: 'all 0.2s ease',
+        letterSpacing: '0.02em',
+      };
+      const fill = primary
+        ? { ...base, background: D.primary, color: '#fff' }
+        : { ...base, background: D.surface, color: D.text, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
+      return <button style={{ ...fill, ...extra }}>{children}</button>;
+    }
+
+    // ─── Sidebar Component ───
+
+    function Sidebar({ items, activeIndex, accent = D.primary, brand, tag, footer }) {
+      return (
+        <div style={{
+          width: 200, background: accent === D.primary ? '#F0EDE7' : '#1E1E1E',
+          color: accent === D.primary ? D.text : '#fff',
+          padding: '20px 0', display: 'flex', flexDirection: 'column', flexShrink: 0,
+        }}>
+          <div style={{
+            padding: '0 20px', marginBottom: 24,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <div style={{
+              width: 22, height: 22, borderRadius: 6,
+              background: accent === D.primary ? D.primary : D.secondary,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, fontFamily: D.mono,
+              color: '#fff',
+            }}>A</div>
+            <span style={{ fontSize: 14, fontWeight: 600, fontFamily: D.serif }}>API Share</span>
+          </div>
+          {tag && (
+            <div style={{
+              fontSize: 9, color: accent === D.primary ? D.muted : D.secondary,
+              padding: '0 20px', marginTop: -20, marginBottom: 20,
+              fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase',
+            }}>{tag}</div>
+          )}
+          {items.map((name, i) => (
+            <div key={name} style={{
+              padding: '8px 20px', fontSize: 12, cursor: 'pointer', fontFamily: D.sans,
+              color: i === activeIndex
+                ? (accent === D.primary ? D.primary : '#fff')
+                : (accent === D.primary ? D.muted : 'rgba(255,255,255,0.4)'),
+              background: i === activeIndex
+                ? (accent === D.primary ? D.primaryLight : 'rgba(255,255,255,0.08)')
+                : 'transparent',
+              borderLeft: i === activeIndex
+                ? `2px solid ${accent}`
+                : '2px solid transparent',
+              transition: 'all 0.15s ease',
+            }}>{name}</div>
+          ))}
+          <div style={{ flex: 1 }}/>
+          {footer && (
+            <div style={{
+              padding: '8px 20px', fontSize: 10,
+              color: accent === D.primary ? D.lightMuted : 'rgba(255,255,255,0.25)',
+            }}>{footer}</div>
+          )}
+        </div>
+      );
+    }
+
+    // ─── Data ───
+
+    const MODELS = [
+      { id: 'glm-5.1', name: 'GLM-5.1', provider: '硅基流动', color: D.primary },
+      { id: 'mimo-v2.5-pro', name: 'Mimo-V2.5-Pro', provider: 'Mimo Token Plan', color: D.secondary },
+      { id: 'kimi-2.6', name: 'Kimi-2.6', provider: '硅基流动', color: D.text },
+    ];
+
+    // ═══════════════════════════════════════
+    // Page 1 · Landing Page
+    // ═══════════════════════════════════════
+
+    function LandingPage() {
+      return (
+        <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+          {/* Nav */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 36px', background: D.surface,
+            borderBottom: `1px solid ${D.border}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: 7,
+                background: D.primary, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: D.mono,
+              }}>A</div>
+              <span style={{ fontSize: 15, fontWeight: 600, fontFamily: D.serif, color: D.text }}>API Share</span>
+            </div>
+            <div style={{ display: 'flex', gap: 28, fontSize: 12, color: D.muted, fontFamily: D.sans }}>
+              <span style={{ cursor: 'pointer' }}>模型</span>
+              <span style={{ cursor: 'pointer' }}>文档</span>
+              <span style={{ cursor: 'pointer' }}>登录</span>
+              <span style={{ color: D.primary, fontWeight: 500, cursor: 'pointer' }}>注册</span>
+            </div>
+          </div>
+
+          {/* Hero */}
+          <div style={{
+            padding: '56px 48px 44px',
+            borderBottom: `1px solid ${D.border}`,
+            background: D.surface,
+          }}>
+            <div style={{
+              fontSize: 11, fontWeight: 500, color: D.secondary,
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+              marginBottom: 16, fontFamily: D.sans,
+            }}>高校学生专属</div>
+            <div style={{
+              fontSize: 38, fontWeight: 700, fontFamily: D.serif,
+              color: D.text, lineHeight: 1.25, marginBottom: 16,
+              textWrap: 'balance', maxWidth: 440,
+            }}>
+              大模型 API<br/>中转平台
+            </div>
+            <div style={{
+              fontSize: 14, lineHeight: 1.8, color: D.muted,
+              maxWidth: 440, marginBottom: 28, fontFamily: D.sans,
+            }}>
+              用学号注册，领取专属 API Key，一行代码接入 GPT 级大模型。
+              兼容 OpenAI 格式，直接用于 opencode、Claude Code 等工具。
+            </div>
+            <Btn primary>立即注册</Btn>
+            <div style={{
+              fontSize: 10, color: D.lightMuted, fontFamily: D.serif,
+              marginTop: 12, fontStyle: 'italic',
+            }}>* 仅限白名单学号注册，每个学生享有每日 / 每周免费额度</div>
+          </div>
+
+          {/* Models */}
+          <div style={{ padding: '28px 48px', borderBottom: `1px solid ${D.border}` }}>
+            <div style={{
+              fontSize: 10, fontWeight: 600, color: D.muted,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              marginBottom: 14, fontFamily: D.sans,
+            }}>支持模型</div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              {MODELS.map(m => (
+                <div key={m.id} style={{
+                  flex: 1, padding: 18, background: D.surface, borderRadius: 12,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)', position: 'relative',
+                }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: m.color, position: 'absolute', top: 14, right: 14,
+                  }}/>
+                  <div style={{ fontSize: 15, fontWeight: 600, fontFamily: D.mono, color: D.text, marginBottom: 4 }}>
+                    {m.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: D.muted }}>{m.provider}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Steps */}
+          <div style={{ padding: '28px 48px', borderBottom: `1px solid ${D.border}` }}>
+            <div style={{
+              fontSize: 10, fontWeight: 600, color: D.muted,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              marginBottom: 14, fontFamily: D.sans,
+            }}>接入方式</div>
+            <div style={{ display: 'flex', gap: 24 }}>
+              {[
+                { n: '01', t: '学号注册', d: '用在校学号和白名单验证身份' },
+                { n: '02', t: '领取 Key', d: '注册后自动生成专属 API Key' },
+                { n: '03', t: '配置接入', d: 'OpenAI 兼容格式，填入 Base URL 和 Key 即可' },
+              ].map(s => (
+                <div key={s.n} style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: 26, fontWeight: 300, fontFamily: D.serif,
+                    color: D.primary, marginBottom: 6, opacity: 0.5,
+                  }}>{s.n}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: D.text, marginBottom: 3 }}>{s.t}</div>
+                  <div style={{ fontSize: 11, color: D.muted, lineHeight: 1.6 }}>{s.d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* API Example */}
+          <div style={{ padding: '28px 48px', borderBottom: `1px solid ${D.border}` }}>
+            <div style={{
+              fontSize: 10, fontWeight: 600, color: D.muted,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              marginBottom: 14, fontFamily: D.sans,
+            }}>API 接入示例</div>
+            <div style={{
+              background: '#2D2D2D', borderRadius: 10, padding: 18,
+              fontFamily: D.mono, fontSize: 11, color: '#A8A29E', lineHeight: 1.9,
+            }}>
+              <span style={{ color: '#8FCFA0' }}>curl</span> https://api-share.cn/v1/chat/completions \<br/>
+              &nbsp;&nbsp;-H <span style={{ color: '#D4B896' }}>"Authorization: Bearer sk-xxxx"</span> \<br/>
+              &nbsp;&nbsp;-H <span style={{ color: '#D4B896' }}>"Content-Type: application/json"</span> \<br/>
+              &nbsp;&nbsp;-d <span style={{ color: '#D4B896' }}>{'data'}</span>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: '12px 48px', display: 'flex',
+            justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div style={{ fontSize: 10, color: D.lightMuted, fontFamily: D.sans }}>API Share</div>
+            <div style={{ fontSize: 10, color: D.lightMuted, fontFamily: D.sans }}>v1.0</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════
+    // Page 2 · Auth (Login / Register)
+    // ═══════════════════════════════════════
+
+    function AuthPage() {
+      const [mode, setMode] = useState('login');
+      return (
+        <div style={{
+          minHeight: '100%', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', background: D.bg, padding: 32,
+        }}>
+          <div style={{
+            width: 380, background: D.surface, borderRadius: 16,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+            overflow: 'hidden',
+          }}>
+            <div style={{ padding: '32px 32px 0' }}>
+              <div style={{
+                fontSize: 22, fontWeight: 700, fontFamily: D.serif,
+                color: D.text, marginBottom: 4,
+              }}>{mode === 'login' ? '登录' : '注册'}</div>
+              <div style={{ fontSize: 12, color: D.muted, marginBottom: 8 }}>
+                {mode === 'login' ? '输入学号和密码登录平台' : '使用学号注册，领取专属 API Key'}
+              </div>
+            </div>
+            <div style={{ padding: '0 32px' }}>
+              <div style={{
+                display: 'flex', gap: 0,
+                borderBottom: `1px solid ${D.border}`, marginBottom: 0,
+              }}>
+                <span onClick={() => setMode('login')} style={{
+                  padding: '10px 0', fontSize: 13, fontWeight: mode === 'login' ? 600 : 400,
+                  fontFamily: D.sans, color: mode === 'login' ? D.primary : D.muted,
+                  cursor: 'pointer', borderBottom: mode === 'login' ? `2px solid ${D.primary}` : '2px solid transparent',
+                  marginRight: 24, transition: 'all 0.15s',
+                }}>登录</span>
+                <span onClick={() => setMode('register')} style={{
+                  padding: '10px 0', fontSize: 13, fontWeight: mode === 'register' ? 600 : 400,
+                  fontFamily: D.sans, color: mode === 'register' ? D.primary : D.muted,
+                  cursor: 'pointer', borderBottom: mode === 'register' ? `2px solid ${D.primary}` : '2px solid transparent',
+                  transition: 'all 0.15s',
+                }}>注册</span>
+              </div>
+            </div>
+            <div style={{ padding: '20px 32px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: D.muted, letterSpacing: '0.06em' }}>学号</label>
+                <input style={{
+                  padding: '10px 14px', borderRadius: 8,
+                  border: `1px solid ${D.border}`, fontSize: 13,
+                  fontFamily: D.mono, color: D.text,
+                  background: D.bg, transition: 'border-color 0.2s',
+                }} placeholder="2024010001" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: D.muted, letterSpacing: '0.06em' }}>密码</label>
+                <input style={{
+                  padding: '10px 14px', borderRadius: 8,
+                  border: `1px solid ${D.border}`, fontSize: 13,
+                  fontFamily: D.sans, color: D.text, background: D.bg,
+                }} type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" />
+              </div>
+              {mode === 'register' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: D.muted, letterSpacing: '0.06em' }}>确认密码</label>
+                  <input style={{
+                    padding: '10px 14px', borderRadius: 8,
+                    border: `1px solid ${D.border}`, fontSize: 13,
+                    fontFamily: D.sans, color: D.text, background: D.bg,
+                  }} type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" />
+                </div>
+              )}
+              <Btn primary style={{ width: '100%', marginTop: 4 }}>
+                {mode === 'login' ? '登录' : '注册并领取 API Key'}
+              </Btn>
+              {mode === 'register' && (
+                <div style={{ fontSize: 10, color: D.lightMuted, fontStyle: 'italic' }}>* 仅限白名单内学号注册</div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════
+    // Page 3 · Student Dashboard
+    // ═══════════════════════════════════════
+
+    function StudentDashboard() {
+      const weekData = [35, 62, 48, 80, 55, 42, 30];
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      return (
+        <div style={{ minHeight: '100%', display: 'flex' }}>
+          <Sidebar items={['概览', '用量详情', '接入文档']} activeIndex={0} footer="2024010001" />
+          <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
+            {/* Top bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 600, fontFamily: D.serif, color: D.text }}>概览</div>
+              <div style={{ fontSize: 11, color: D.muted, fontFamily: D.mono }}>学号 2024010001</div>
+            </div>
+
+            {/* API Key card */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20, marginBottom: 20,
+              borderTop: `2px solid ${D.primary}`,
+            }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: D.muted,
+                letterSpacing: '0.08em', marginBottom: 8,
+              }}>API Key</div>
+              <div style={{ fontSize: 14, fontFamily: D.mono, color: D.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                sk-7f3a<span style={{ color: D.lightMuted }}>&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span>b9c4
+                <span style={{ fontSize: 10, color: D.primary, fontWeight: 500, cursor: 'pointer' }}>复制</span>
+              </div>
+            </div>
+
+            {/* Quota cards */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              <div style={{
+                flex: 1, padding: 16, background: D.surface, borderRadius: 12,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: D.muted, fontWeight: 500 }}>今日用量</span>
+                  <Badge label="正常" color={D.primaryLight} textColor={D.primary}/>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 600, fontFamily: D.mono, color: D.text, marginBottom: 6 }}>12,480</div>
+                <MiniBar value={12480} max={50000} height={3}/>
+                <div style={{ fontSize: 10, color: D.muted, fontFamily: D.mono, marginTop: 6 }}>12,480 / 50,000 tokens</div>
+              </div>
+              <div style={{
+                flex: 1, padding: 16, background: D.surface, borderRadius: 12,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: D.muted, fontWeight: 500 }}>本周用量</span>
+                  <Badge label="注意" color={D.secondaryLight} textColor={D.secondary}/>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 600, fontFamily: D.mono, color: D.text, marginBottom: 6 }}>186,200</div>
+                <MiniBar value={186200} max={250000} color={D.secondary} height={3}/>
+                <div style={{ fontSize: 10, color: D.muted, fontFamily: D.mono, marginTop: 6 }}>186,200 / 250,000 tokens</div>
+              </div>
+            </div>
+
+            {/* Weekly chart */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20, marginBottom: 20,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: D.text, fontFamily: D.sans, marginBottom: 16 }}>近 7 日用量趋势</div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 80 }}>
+                {weekData.map((v, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: '100%', height: 64, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                      <div style={{
+                        width: '70%', height: `${v}%`,
+                        background: v > 60 ? D.secondary : D.primary,
+                        borderRadius: '4px 4px 0 0',
+                        opacity: 0.8,
+                        transition: 'height 0.4s ease',
+                      }}/>
+                    </div>
+                    <div style={{ fontSize: 9, color: D.muted, textAlign: 'center', fontFamily: D.mono, marginTop: 4 }}>{days[i]}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Models list */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: D.text, fontFamily: D.sans, marginBottom: 12 }}>可用模型</div>
+              {MODELS.map((m, i) => (
+                <div key={m.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 0',
+                  borderBottom: i < MODELS.length - 1 ? `1px solid ${D.border}` : 'none',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.color }}/>
+                    <span style={{ fontSize: 13, fontFamily: D.mono, fontWeight: 500, color: D.text }}>{m.name}</span>
+                  </div>
+                  <span style={{
+                    fontSize: 10, fontFamily: D.mono, color: D.primary,
+                    background: D.primaryLight, padding: '2px 8px', borderRadius: 6,
+                  }}>{m.id}</span>
+                </div>
+              ))}
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${D.border}` }}>
+                <span style={{ fontSize: 10, color: D.muted }}>Base URL: </span>
+                <span style={{
+                  fontSize: 10, fontFamily: D.mono, color: D.primary,
+                  background: D.primaryLight, padding: '2px 6px', borderRadius: 4,
+                }}>https://api-share.cn/v1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════
+    // Page 4 · Usage Details
+    // ═══════════════════════════════════════
+
+    function UsagePage() {
+      const [filter, setFilter] = useState('all');
+
+      const logs = [
+        { time: '14:32:08', model: 'glm-5.1', tokens: 1842, status: 200 },
+        { time: '14:30:55', model: 'mimo-v2.5-pro', tokens: 3201, status: 200 },
+        { time: '14:28:12', model: 'kimi-2.6', tokens: 956, status: 200 },
+        { time: '14:25:40', model: 'glm-5.1', tokens: 2108, status: 200 },
+        { time: '14:22:15', model: 'glm-5.1', tokens: 0, status: 429 },
+        { time: '14:20:03', model: 'kimi-2.6', tokens: 1523, status: 200 },
+        { time: '14:18:44', model: 'mimo-v2.5-pro', tokens: 2870, status: 200 },
+        { time: '14:15:22', model: 'glm-5.1', tokens: 1124, status: 200 },
+      ];
+      const hourlyData = [12, 28, 35, 22, 8, 5, 15, 42, 68, 82, 75, 90, 85, 72, 58, 45, 38, 52, 48, 35, 22, 18, 15, 10];
+
+      const filteredLogs = filter === 'all' ? logs : logs.filter(l => l.model === filter);
+      const filteredHourly = filter === 'all'
+        ? hourlyData
+        : hourlyData.map(v => Math.round(v * ({ 'glm-5.1': 0.5, 'mimo-v2.5-pro': 0.25, 'kimi-2.6': 0.25 }[filter] || 1)));
+
+      // Per-model summary stats
+      const modelStats = MODELS.map(m => {
+        const modelLogs = logs.filter(l => l.model === m.id);
+        return {
+          ...m,
+          totalTokens: modelLogs.reduce((sum, l) => sum + l.tokens, 0),
+          requests: modelLogs.length,
+        };
+      });
+      const totalTokens = logs.reduce((sum, l) => sum + l.tokens, 0);
+
+      const filterPill = (key, label) => (
+        <span
+          key={key}
+          onClick={() => setFilter(key)}
+          style={{
+            padding: '5px 14px', borderRadius: 999, fontSize: 11, fontWeight: 500,
+            fontFamily: D.sans, cursor: 'pointer',
+            background: filter === key ? D.primary : D.surface,
+            color: filter === key ? '#fff' : D.muted,
+            boxShadow: filter === key ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+            transition: 'all 0.2s ease',
+          }}
+        >{label}</span>
+      );
+
+      return (
+        <div style={{ minHeight: '100%', display: 'flex' }}>
+          <Sidebar items={['概览', '用量详情', '接入文档']} activeIndex={1} />
+          <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: 20,
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 600, fontFamily: D.serif, color: D.text }}>用量详情</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {filterPill('all', '全部')}
+                {MODELS.map(m => filterPill(m.id, m.name))}
+              </div>
+            </div>
+
+            {/* Model summary cards */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              {modelStats.map(m => (
+                <div key={m.id} style={{
+                  flex: 1, padding: 14, background: D.surface, borderRadius: 12,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  opacity: filter === 'all' || filter === m.id ? 1 : 0.4,
+                  transition: 'opacity 0.2s',
+                  borderTop: filter === m.id ? `2px solid ${m.color}` : '2px solid transparent',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.color }}/>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: D.text, fontFamily: D.mono }}>{m.name}</span>
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 600, fontFamily: D.mono, color: D.text, marginBottom: 2 }}>
+                    {m.totalTokens.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: 10, color: D.muted }}>
+                    {m.requests} 次调用 · {totalTokens > 0 ? Math.round(m.totalTokens / totalTokens * 100) : 0}%
+                  </div>
+                  <MiniBar value={m.totalTokens} max={totalTokens || 1} color={m.color} height={3}/>
+                </div>
+              ))}
+            </div>
+
+            {/* Hourly chart */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20, marginBottom: 20,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: D.text, fontFamily: D.sans, marginBottom: 12 }}>
+                今日小时级分布
+                {filter !== 'all' && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 400, color: D.muted, marginLeft: 8, fontFamily: D.mono,
+                  }}>({filter})</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 4, height: 100, alignItems: 'flex-end' }}>
+                {filteredHourly.map((v, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: '100%', height: 80, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                      <div style={{
+                        width: '80%', height: `${Math.min(v, 100)}%`,
+                        background: (() => {
+                          if (filter !== 'all') {
+                            const m = MODELS.find(m => m.id === filter);
+                            return m ? m.color : D.primary;
+                          }
+                          return v > 70 ? D.secondary : D.primary;
+                        })(),
+                        borderRadius: '3px 3px 0 0', opacity: 0.75,
+                        transition: 'height 0.4s ease, background 0.3s',
+                      }}/>
+                    </div>
+                    {i % 3 === 0 && (
+                      <div style={{ fontSize: 8, color: D.muted, fontFamily: D.mono, marginTop: 3 }}>{i}h</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Logs table */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: D.text, fontFamily: D.sans }}>调用日志</span>
+                <span style={{ fontSize: 10, color: D.muted, fontFamily: D.mono }}>
+                  {filteredLogs.length} 条记录
+                </span>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: D.mono }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: D.muted, fontWeight: 500, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>时间</th>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: D.muted, fontWeight: 500, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>模型</th>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: D.muted, fontWeight: 500, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>Token 用量</th>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: D.muted, fontWeight: 500, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.map((l, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}`, color: D.text }}>{l.time}</td>
+                      <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <div style={{
+                            width: 5, height: 5, borderRadius: '50%',
+                            background: MODELS.find(m => m.id === l.model)?.color || D.muted,
+                          }}/>
+                          <span style={{ color: D.text }}>{l.model}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}`, color: D.text }}>{l.tokens > 0 ? l.tokens.toLocaleString() : '—'}</td>
+                      <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}` }}>
+                        <span style={{
+                          display: 'inline-block', padding: '1px 6px', borderRadius: 4,
+                          fontSize: 10, fontWeight: 500,
+                          background: l.status === 200 ? D.primaryLight : 'rgba(199,91,91,0.08)',
+                          color: l.status === 200 ? D.primary : D.danger,
+                        }}>{l.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════
+    // Page 5 · Admin Dashboard
+    // ═══════════════════════════════════════
+
+    function AdminDashboard() {
+      const students = [
+        { id: '2024010001', name: '张同学', daily: 12480, dailyLimit: 50000, weekly: 186200, weeklyLimit: 250000, lastActive: '14:32' },
+        { id: '2024010002', name: '李同学', daily: 38200, dailyLimit: 50000, weekly: 210500, weeklyLimit: 250000, lastActive: '14:28' },
+        { id: '2024010003', name: '王同学', daily: 45000, dailyLimit: 50000, weekly: 245000, weeklyLimit: 250000, lastActive: '14:30' },
+        { id: '2024010004', name: '赵同学', daily: 8200, dailyLimit: 50000, weekly: 98000, weeklyLimit: 250000, lastActive: '12:15' },
+        { id: '2024010005', name: '刘同学', daily: 50000, dailyLimit: 50000, weekly: 250000, weeklyLimit: 250000, lastActive: '14:31' },
+      ];
+      return (
+        <div style={{ minHeight: '100%', display: 'flex' }}>
+          <Sidebar
+            items={['数据概览', '学生管理', '白名单', '系统配置']}
+            activeIndex={0}
+            accent={D.secondary}
+            tag="管理后台"
+            footer="Admin"
+          />
+          <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
+            <div style={{ fontSize: 18, fontWeight: 600, fontFamily: D.serif, color: D.text, marginBottom: 20 }}>数据概览</div>
+
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              <StatCard label="注册学生" value="127" accent={D.primary}/>
+              <StatCard label="今日调用量" value="1.2M" sub="tokens" accent={D.secondary}/>
+              <StatCard label="本周调用量" value="8.6M" sub="tokens"/>
+              <StatCard label="今日活跃" value="89" sub="/ 127 学生"/>
+            </div>
+
+            {/* Student table */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: D.text, fontFamily: D.sans }}>学生列表</span>
+                <input style={{
+                  padding: '6px 12px', borderRadius: 8,
+                  border: `1px solid ${D.border}`, fontSize: 12,
+                  fontFamily: D.sans, width: 220, background: D.bg, color: D.text,
+                }} placeholder="搜索学号 / 姓名"/>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: D.mono }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '8px 8px', color: D.muted, fontWeight: 600, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>学号</th>
+                    <th style={{ textAlign: 'left', padding: '8px 8px', color: D.muted, fontWeight: 600, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>姓名</th>
+                    <th style={{ textAlign: 'left', padding: '8px 8px', color: D.muted, fontWeight: 600, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>今日用量</th>
+                    <th style={{ textAlign: 'left', padding: '8px 8px', color: D.muted, fontWeight: 600, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>本周用量</th>
+                    <th style={{ textAlign: 'left', padding: '8px 8px', color: D.muted, fontWeight: 600, fontSize: 10, letterSpacing: '0.05em', borderBottom: `1px solid ${D.border}` }}>最后活跃</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map(st => {
+                    const dailyPct = st.daily / st.dailyLimit;
+                    const weeklyPct = st.weekly / st.weeklyLimit;
+                    const isDanger = dailyPct >= 0.9 || weeklyPct >= 0.9;
+                    return (
+                      <tr key={st.id} style={isDanger ? { background: 'rgba(199,91,91,0.03)' } : undefined}>
+                        <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}`, color: D.text }}>{st.id}</td>
+                        <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}`, color: D.text, fontFamily: D.sans }}>{st.name}</td>
+                        <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}` }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <span style={{ color: D.text }}>{st.daily.toLocaleString()} / {st.dailyLimit.toLocaleString()}</span>
+                            <MiniBar value={st.daily} max={st.dailyLimit} color={dailyPct >= 0.9 ? D.danger : D.primary} height={3}/>
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}` }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <span style={{ color: D.text }}>{st.weekly.toLocaleString()} / {st.weeklyLimit.toLocaleString()}</span>
+                            <MiniBar value={st.weekly} max={st.weeklyLimit} color={weeklyPct >= 0.9 ? D.danger : D.primary} height={3}/>
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px 8px', borderBottom: `1px solid ${D.border}`, color: D.text }}>{st.lastActive}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════
+    // Page 6 · Admin Student Detail
+    // ═══════════════════════════════════════
+
+    function AdminStudentDetail() {
+      return (
+        <div style={{ minHeight: '100%', display: 'flex' }}>
+          <Sidebar
+            items={['数据概览', '学生管理', '白名单', '系统配置']}
+            activeIndex={1}
+            accent={D.secondary}
+            tag="管理后台"
+          />
+          <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, color: D.primary, fontSize: 12, cursor: 'pointer' }}>
+              &#8592; 返回学生列表
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 600, fontFamily: D.serif, color: D.text, marginBottom: 20 }}>学生详情</div>
+
+            {/* Profile card */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20, marginBottom: 20,
+              display: 'flex', gap: 24, alignItems: 'flex-start',
+            }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14,
+                background: D.primaryLight,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, fontWeight: 600, color: D.primary,
+                fontFamily: D.serif, flexShrink: 0,
+              }}>张</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: D.text, fontFamily: D.serif, marginBottom: 2 }}>张同学</div>
+                <div style={{ fontSize: 11, color: D.muted, fontFamily: D.mono }}>学号 2024010001 · 注册于 2026-03-15</div>
+                <div style={{ marginTop: 12 }}>
+                  <StatCard label="今日用量" value="12,480" sub="/ 50,000" small accent={D.primary}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Quota form */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20, marginBottom: 20,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: D.text, fontFamily: D.sans, marginBottom: 16 }}>额度设置</div>
+              <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: D.muted, letterSpacing: '0.06em' }}>每日 Token 上限</label>
+                  <input style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    border: `1px solid ${D.border}`, fontSize: 12,
+                    fontFamily: D.mono, background: D.bg, color: D.text, width: '100%',
+                  }} defaultValue="50000"/>
+                  <span style={{ fontSize: 10, color: D.lightMuted, fontFamily: D.mono }}>当前设定：50,000</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: D.muted, letterSpacing: '0.06em' }}>每周 Token 上限</label>
+                  <input style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    border: `1px solid ${D.border}`, fontSize: 12,
+                    fontFamily: D.mono, background: D.bg, color: D.text, width: '100%',
+                  }} defaultValue="250000"/>
+                  <span style={{ fontSize: 10, color: D.lightMuted, fontFamily: D.mono }}>当前设定：250,000</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn primary small>保存修改</Btn>
+                <Btn small>重置</Btn>
+              </div>
+            </div>
+
+            {/* Danger zone */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: D.danger, fontFamily: D.sans, marginBottom: 8 }}>危险操作</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn small style={{
+                  background: 'rgba(199,91,91,0.06)', color: D.danger,
+                  boxShadow: '0 1px 3px rgba(199,91,91,0.1)',
+                }}>重置 API Key</Btn>
+                <Btn small style={{
+                  background: 'rgba(199,91,91,0.06)', color: D.danger,
+                  boxShadow: '0 1px 3px rgba(199,91,91,0.1)',
+                }}>禁用账户</Btn>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════
+    // Page 7 · Admin Whitelist
+    // ═══════════════════════════════════════
+
+    function AdminWhitelist() {
+      const whitelist = [
+        '2024010001', '2024010002', '2024010003', '2024010004', '2024010005',
+        '2024010006', '2024010007', '2024010008', '2024010009', '2024010010',
+        '2024020001', '2024020002', '2024020003',
+      ];
+      return (
+        <div style={{ minHeight: '100%', display: 'flex' }}>
+          <Sidebar
+            items={['数据概览', '学生管理', '白名单', '系统配置']}
+            activeIndex={2}
+            accent={D.secondary}
+            tag="管理后台"
+          />
+          <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
+            <div style={{ fontSize: 18, fontWeight: 600, fontFamily: D.serif, color: D.text, marginBottom: 20 }}>白名单管理</div>
+
+            {/* Add card */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20, marginBottom: 20,
+            }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: D.muted, letterSpacing: '0.06em' }}>学号</label>
+                  <input style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    border: `1px solid ${D.border}`, fontSize: 12,
+                    fontFamily: D.mono, background: D.bg, color: D.text,
+                  }} placeholder="2024010011"/>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: D.muted, letterSpacing: '0.06em' }}>备注（可选）</label>
+                  <input style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    border: `1px solid ${D.border}`, fontSize: 12,
+                    fontFamily: D.sans, background: D.bg, color: D.text,
+                  }} placeholder="计算机 2024 级"/>
+                </div>
+                <Btn primary small>添加</Btn>
+              </div>
+              <div style={{ fontSize: 10, color: D.lightMuted, marginTop: 8, fontStyle: 'italic' }}>支持批量添加，每行一个学号</div>
+            </div>
+
+            {/* Whitelist grid */}
+            <div style={{
+              background: D.surface, borderRadius: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              padding: 20,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: D.text, fontFamily: D.sans }}>白名单列表</span>
+                <span style={{ fontSize: 11, color: D.muted, fontFamily: D.mono }}>共 {whitelist.length} 个学号</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {whitelist.map(id => (
+                  <div key={id} style={{
+                    padding: '5px 12px', borderRadius: 8, fontSize: 12, fontFamily: D.mono,
+                    background: D.primaryLight, color: D.primary,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                    {id}
+                    <span style={{ color: D.danger, fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>&#215;</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════
+    // App · Prototype Gallery
+    // ═══════════════════════════════════════
+
+    function App() {
+      const screens = [
+        { label: 'Landing Page', url: 'api-share.cn', component: LandingPage, w: 880, h: 680 },
+        { label: '注册 / 登录', url: 'api-share.cn/auth', component: AuthPage, w: 680, h: 580 },
+        { label: '学生 Dashboard', url: 'api-share.cn/dashboard', component: StudentDashboard, w: 960, h: 640 },
+        { label: '用量详情', url: 'api-share.cn/dashboard/usage', component: UsagePage, w: 960, h: 640 },
+        { label: '管理后台 · 概览', url: 'api-share.cn/admin', component: AdminDashboard, w: 960, h: 640 },
+        { label: '管理后台 · 学生详情', url: 'api-share.cn/admin/student/2024010001', component: AdminStudentDetail, w: 880, h: 640 },
+        { label: '管理后台 · 白名单', url: 'api-share.cn/admin/whitelist', component: AdminWhitelist, w: 880, h: 600 },
+      ];
+
+      return (
+        <div style={{ padding: '48px 32px', background: '#EDE9E3' }}>
+          {/* Header */}
+          <div style={{ marginBottom: 32, maxWidth: 800 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 500, color: D.secondary,
+              letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8,
+            }}>API Share · 系统原型</div>
+            <div style={{
+              fontSize: 28, fontWeight: 700, fontFamily: D.serif,
+              color: D.text, lineHeight: 1.2, marginBottom: 8,
+            }}>大模型 API 中转平台</div>
+            <div style={{ fontSize: 13, color: D.muted, lineHeight: 1.6, fontFamily: D.sans }}>
+              Takram 日式思辨风格 · 鼠尾草绿 #6B8F71 + 赤陶 #C47A5A<br/>
+              字体：Noto Serif JP / Noto Sans JP / JetBrains Mono
+            </div>
+          </div>
+
+          {/* Screens */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40, alignItems: 'flex-start' }}>
+            {screens.map((screen, i) => (
+              <div key={i}>
+                <div style={{
+                  fontSize: 11, color: D.muted, marginBottom: 8,
+                  fontStyle: 'italic', fontFamily: D.serif,
+                }}>
+                  {String(i + 1).padStart(2, '0')} · {screen.label}
+                </div>
+                <BrowserWindow
+                  title={screen.label}
+                  url={screen.url}
+                  width={screen.w}
+                  height={screen.h}
+                  accent={i >= 4 ? D.secondary : D.primary}
+                >
+                  <screen.component />
+                </BrowserWindow>
+              </div>
+            ))}
+          </div>
+
+          {/* Design notes */}
+          <div style={{
+            marginTop: 48, padding: '20px 24px', background: D.surface,
+            borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            maxWidth: 600,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: D.text, fontFamily: D.sans, marginBottom: 8 }}>设计说明</div>
+            <div style={{ fontSize: 11, color: D.muted, lineHeight: 1.8, fontFamily: D.sans }}>
+              <b style={{ color: D.text }}>配色</b>：鼠尾草绿 #6B8F71 传递温和与自然感，赤陶 #C47A5A 用于数据高亮和管理端 accent
+              <br/>
+              <b style={{ color: D.text }}>字体</b>：Noto Serif JP（标题，日式精致）/ Noto Sans JP（正文，柔和清晰）/ JetBrains Mono（数据，API Key）
+              <br/>
+              <b style={{ color: D.text }}>阴影</b>：极轻柔 shadow 替代 border，圆角 12px，营造 Takram 标志性的「柔和科技感」
+              <br/>
+              <b style={{ color: D.text }}>管理端</b>：暖灰色侧边栏 + 赤陶 accent 区分管理权限
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Render ───
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

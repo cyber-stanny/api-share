@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Share 管理后台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 16px 24px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.header h1 { font-size: 20px; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: opacity .2s; }
+.btn:hover { opacity: .85; }
+.btn-primary { background: #4f46e5; color: #fff; }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-sm { padding: 4px 12px; font-size: 12px; }
+.card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); margin-bottom: 20px; }
+.card-header { padding: 16px 20px; border-bottom: 1px solid #eee; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.card-body { padding: 20px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+th { background: #fafafa; font-weight: 600; }
+input, select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+input[type="number"] { width: 80px; }
+.login-box { max-width: 400px; margin: 100px auto; padding: 32px; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.login-box h2 { text-align: center; margin-bottom: 24px; }
+.login-box input { width: 100%; padding: 10px 12px; margin-bottom: 12px; }
+.login-box .btn { width: 100%; padding: 10px; }
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+.tab { padding: 8px 20px; background: #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.tab.active { background: #4f46e5; color: #fff; }
+.hidden { display: none; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.badge-ok { background: #dcfce7; color: #166534; }
+.badge-warn { background: #fef3c7; color: #92400e; }
+.badge-danger { background: #fee2e2; color: #991b1b; }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: #fff; border-radius: 12px; padding: 24px; min-width: 400px; max-width: 500px; }
+.modal h3 { margin-bottom: 16px; }
+.modal input, .modal textarea { width: 100%; margin-bottom: 12px; padding: 8px 12px; }
+.modal textarea { height: 100px; resize: vertical; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.msg { padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 14px; }
+.msg-err { background: #fee2e2; color: #991b1b; }
+.msg-ok { background: #dcfce7; color: #166534; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 登录 -->
+  <div id="loginPage" class="login-box">
+    <h2>API Share 管理后台</h2>
+    <div id="loginMsg"></div>
+    <input id="loginUser" placeholder="用户名" value="admin">
+    <input id="loginPass" type="password" placeholder="密码">
+    <button class="btn btn-primary" onclick="doLogin()">登录</button>
+  </div>
+
+  <!-- 后台 -->
+  <div id="dashboard" class="hidden">
+    <div class="header">
+      <h1>API Share 管理后台</h1>
+      <button class="btn" onclick="doLogout()">退出</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('students', event)">学生管理</div>
+      <div class="tab" onclick="switchTab('whitelist', event)">白名单</div>
+      <div class="tab" onclick="switchTab('usage', event)">调用日志</div>
+    </div>
+
+    <!-- 学生管理 -->
+    <div id="tab-students">
+      <div class="card">
+        <div class="card-header">
+          <span>学生列表</span>
+          <button class="btn btn-primary btn-sm" onclick="showAddStudent()">添加学生</button>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>学号</th><th>姓名</th><th>Key 前缀</th><th>日限额 (token)</th><th>日已用</th><th>周限额 (token)</th><th>周已用</th><th>操作</th></tr></thead>
+            <tbody id="studentTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 白名单 -->
+    <div id="tab-whitelist" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <span>学号白名单</span>
+          <button class="btn btn-primary btn-sm" onclick="showAddWhitelist()">添加白名单</button>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>学号</th><th>姓名</th><th>添加时间</th><th>操作</th></tr></thead>
+            <tbody id="whitelistTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 调用日志 -->
+    <div id="tab-usage" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <span>调用日志</span>
+          <div><input id="usageFilter" placeholder="按学号筛选" style="margin-right:8px"><button class="btn btn-sm" onclick="loadUsage()">查询</button></div>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>学号</th><th>模型</th><th>消耗 Tokens</th><th>状态</th><th>时间</th></tr></thead>
+            <tbody id="usageTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 模态框 -->
+<div id="modal" class="modal-overlay hidden" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+let token = localStorage.getItem('adminToken');
+const API = '';
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers || {}) },
+  });
+  const data = await res.json();
+  if (!res.ok && (res.status === 401 || res.status === 403)) { doLogout(); throw new Error('认证失败'); }
+  return data;
+}
+
+function doLogin() {
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+  fetch(API + '/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      token = data.data.token;
+      localStorage.setItem('adminToken', token);
+      showDashboard();
+    } else {
+      document.getElementById('loginMsg').innerHTML = `<div class="msg msg-err">${escapeHtml(data.error)}</div>`;
+    }
+  });
+}
+
+function doLogout() { token = null; localStorage.removeItem('adminToken'); document.getElementById('loginPage').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
+
+function showDashboard() { document.getElementById('loginPage').classList.add('hidden'); document.getElementById('dashboard').classList.remove('hidden'); loadStudents(); }
+
+function switchTab(name, e) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  (e ? e.target : event.target).classList.add('active');
+  ['students', 'whitelist', 'usage'].forEach(n => document.getElementById('tab-' + n).classList.toggle('hidden', n !== name));
+  if (name === 'students') loadStudents();
+  if (name === 'whitelist') loadWhitelist();
+  if (name === 'usage') loadUsage();
+}
+
+function fmtDate(d) { return d ? new Date(d).toLocaleString('zh-CN') : '-'; }
+
+function fmtTokens(n) {
+  if (n >= 10000) return Math.round(n / 1000) + 'K';
+  return n.toLocaleString();
+}
+
+async function loadStudents() {
+  const data = await api('/api/admin/students');
+  if (!data.success) return;
+  const tbody = document.getElementById('studentTable');
+  tbody.innerHTML = data.data.students.map(s => {
+    const dailyLimit = s.quota?.dailyTokenLimit || 500000;
+    const weeklyLimit = s.quota?.weeklyTokenLimit || 2000000;
+    const dailyPct = dailyLimit > 0 ? Math.round(s.dailyTokensUsed / dailyLimit * 100) : 0;
+    const weeklyPct = weeklyLimit > 0 ? Math.round(s.weeklyTokensUsed / weeklyLimit * 100) : 0;
+    const dailyBadge = dailyPct >= 90 ? 'badge-danger' : dailyPct >= 70 ? 'badge-warn' : 'badge-ok';
+    const weeklyBadge = weeklyPct >= 90 ? 'badge-danger' : weeklyPct >= 70 ? 'badge-warn' : 'badge-ok';
+    return `<tr>
+      <td>${escapeHtml(s.studentId)}</td><td>${escapeHtml(s.name) || '-'}</td><td><code>${escapeHtml(s.apiKeyPrefix)}...</code></td>
+      <td>${fmtTokens(dailyLimit)}</td><td><span class="badge ${dailyBadge}">${fmtTokens(s.dailyTokensUsed)} (${dailyPct}%)</span></td>
+      <td>${fmtTokens(weeklyLimit)}</td><td><span class="badge ${weeklyBadge}">${fmtTokens(s.weeklyTokensUsed)} (${weeklyPct}%)</span></td>
+      <td><button class="btn btn-sm" onclick="editQuota('${escapeHtml(s._id)}','${escapeHtml(s.studentId)}',${dailyLimit},${weeklyLimit})">调额度</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showAddStudent() {
+  document.getElementById('modalContent').innerHTML = `
+    <h3>添加学生</h3>
+    <input id="addStuId" placeholder="学号">
+    <input id="addStuName" placeholder="姓名（选填）">
+    <input id="addStuPass" placeholder="初始密码" value="123456">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div><label>日限额 (token)</label><input id="addDaily" type="number" value="500000"></div>
+      <div><label>周限额 (token)</label><input id="addWeekly" type="number" value="2000000"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="addStudent()">添加</button>
+    </div>`;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+async function addStudent() {
+  const data = await api('/api/admin/students', { method: 'POST', body: JSON.stringify({
+    studentId: document.getElementById('addStuId').value,
+    name: document.getElementById('addStuName').value,
+    password: document.getElementById('addStuPass').value,
+    dailyTokenLimit: parseInt(document.getElementById('addDaily').value),
+    weeklyTokenLimit: parseInt(document.getElementById('addWeekly').value),
+  }) });
+  if (data.success) {
+    document.getElementById('modalContent').innerHTML = `
+      <h3>添加成功</h3>
+      <p>学号: ${escapeHtml(data.data.studentId)}</p>
+      <p>API Key（请复制保存，不会再次显示）：</p>
+      <input value="${escapeHtml(data.data.apiKey)}" readonly onclick="this.select()" style="font-family:monospace;font-size:14px">
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="closeModal();loadStudents()">完成</button>
+      </div>`;
+  } else { alert(data.error); }
+}
+
+function editQuota(id, sid, daily, weekly) {
+  document.getElementById('modalContent').innerHTML = `
+    <h3>调整额度 - ${escapeHtml(sid)}</h3>
+    <div style="display:flex;gap:16px;margin-bottom:12px">
+      <div><label>每日 token 上限</label><input id="editDaily" type="number" value="${daily}"></div>
+      <div><label>每周 token 上限</label><input id="editWeekly" type="number" value="${weekly}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveQuota('${id}')">保存</button>
+    </div>`;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+async function saveQuota(id) {
+  const data = await api(`/api/admin/students/${id}/quota`, { method: 'PUT', body: JSON.stringify({
+    dailyTokenLimit: parseInt(document.getElementById('editDaily').value),
+    weeklyTokenLimit: parseInt(document.getElementById('editWeekly').value),
+  }) });
+  if (data.success) { closeModal(); loadStudents(); } else { alert(data.error); }
+}
+
+async function loadWhitelist() {
+  const data = await api('/api/admin/whitelist');
+  if (!data.success) return;
+  document.getElementById('whitelistTable').innerHTML = data.data.items.map(w => `<tr>
+    <td>${escapeHtml(w.studentId)}</td><td>${escapeHtml(w.name) || '-'}</td><td>${fmtDate(w.addedAt)}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteWhitelist('${escapeHtml(w._id)}')">删除</button></td>
+  </tr>`).join('');
+}
+
+function showAddWhitelist() {
+  document.getElementById('modalContent').innerHTML = `
+    <h3>添加白名单</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:8px">每行一个，格式：<code>学号 姓名</code>（姓名选填，用空格分隔）</p>
+    <textarea id="addWlIds" placeholder="202401050655 王思懿&#10;202401050687 张中宝&#10;202401050731"></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="addWhitelist()">添加</button>
+    </div>`;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+async function addWhitelist() {
+  const raw = document.getElementById('addWlIds').value;
+  const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  if (lines.length === 0) return alert('请输入学号');
+  const items = lines.map(line => {
+    const parts = line.split(/\s+/);
+    return { studentId: parts[0], name: parts[1] || '' };
+  });
+  const data = await api('/api/admin/whitelist', { method: 'POST', body: JSON.stringify({ items }) });
+  if (data.success) { closeModal(); loadWhitelist(); alert(data.data.message); } else { alert(data.error); }
+}
+
+async function deleteWhitelist(id) {
+  if (!confirm('确定删除？')) return;
+  await api(`/api/admin/whitelist/${id}`, { method: 'DELETE' });
+  loadWhitelist();
+}
+
+async function loadUsage() {
+  const sid = document.getElementById('usageFilter').value;
+  const qs = sid ? `?studentId=${sid}` : '';
+  const data = await api('/api/admin/usage' + qs);
+  if (!data.success) return;
+  document.getElementById('usageTable').innerHTML = data.data.records.map(r => `<tr>
+    <td>${escapeHtml(r.studentId)}</td><td>${escapeHtml(r.model)}</td>
+    <td>${r.totalTokens}</td>
+    <td>${r.status}</td><td>${fmtDate(r.createdAt)}</td>
+  </tr>`).join('');
+}
+
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+// 自动登录
+if (token) showDashboard();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "envId": "{{CLOUDBASE_ENV_ID}}",
+  "functions": [
+    {
+      "name": "api-share",
+      "timeout": 60,
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "envVariables": {
+        "CLOUDBASE_ENV_ID": "{{CLOUDBASE_ENV_ID}}",
+        "JWT_SECRET": "{{JWT_SECRET}}",
+        "ADMIN_INIT_PASSWORD": "{{ADMIN_INIT_PASSWORD}}",
+        "CORS_ORIGINS": "{{CORS_ORIGINS}}",
+        "SILICONFLOW_API_KEY": "{{SILICONFLOW_API_KEY}}",
+        "MIMO_API_KEY": "{{MIMO_API_KEY}}"
+      }
+    }
+  ]
+}
