@@ -10,6 +10,7 @@ API Share 是一个大模型 API 中转平台，面向学生用户提供：
 - 登录后查看和重置 API Key
 - OpenAI 兼容接口代理
 - Anthropic 兼容接口代理
+- 学生端按 Token Plan provider 维度查看模型和用量
 - 后台管理学生、白名单、额度和调用日志
 
 当前支持的上游主要是：
@@ -36,7 +37,7 @@ API Share 是一个大模型 API 中转平台，面向学生用户提供：
 
 ### 1. 应用入口
 
-[`src/app.js`](/Users/daipeng/Workspace/api-share/src/app.js) 负责：
+[`src/app.js`](src/app.js) 负责：
 
 - 挂载 JSON body parser
 - 注入 CORS
@@ -129,6 +130,7 @@ MiniMax 的特殊点：
 - `users`
 
 管理员和学生都能查看自己的用量和调用历史，管理员可以看到更完整的列表。
+学生端还会把模型按 provider 分组展示，当前主要是 MiMo Token Plan 和 MiniMax Token Plan，并在概览里展示 MiMo token 用量和 MiniMax 调用次数用量。
 
 ## 数据集合
 
