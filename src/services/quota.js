@@ -53,8 +53,12 @@ async function getOrCreateCounter(studentId) {
         studentId,
         dailyTokens: 0,
         weeklyTokens: 0,
+        minimaxDailyRequests: 0,
+        minimaxWeeklyRequests: 0,
         lastDayReset: dayStart,
         lastWeekReset: weekStart,
+        lastMiniMaxDayReset: dayStart,
+        lastMiniMaxWeekReset: weekStart,
       };
       await db.collection('token_counters').add(counter);
       return counter;
@@ -75,12 +79,28 @@ async function getOrCreateCounter(studentId) {
       needsUpdate = true;
     }
 
+    if (!counter.lastMiniMaxDayReset || new Date(counter.lastMiniMaxDayReset) < dayStart) {
+      counter.minimaxDailyRequests = 0;
+      counter.lastMiniMaxDayReset = dayStart;
+      needsUpdate = true;
+    }
+
+    if (!counter.lastMiniMaxWeekReset || new Date(counter.lastMiniMaxWeekReset) < weekStart) {
+      counter.minimaxWeeklyRequests = 0;
+      counter.lastMiniMaxWeekReset = weekStart;
+      needsUpdate = true;
+    }
+
     if (needsUpdate) {
       await db.collection('token_counters').doc(counter._id).update({
         dailyTokens: counter.dailyTokens,
         weeklyTokens: counter.weeklyTokens,
+        minimaxDailyRequests: counter.minimaxDailyRequests || 0,
+        minimaxWeeklyRequests: counter.minimaxWeeklyRequests || 0,
         lastDayReset: counter.lastDayReset,
         lastWeekReset: counter.lastWeekReset,
+        lastMiniMaxDayReset: counter.lastMiniMaxDayReset,
+        lastMiniMaxWeekReset: counter.lastMiniMaxWeekReset,
       });
     }
 
@@ -130,4 +150,45 @@ async function addTokens(studentId, totalTokens) {
     });
 }
 
-module.exports = { checkQuota, addTokens };
+function getMiniMaxRequestQuota() {
+  return config.defaultMiniMaxQuota;
+}
+
+async function checkMiniMaxQuota(studentId, requestUnits = 1) {
+  const { data } = await db.collection('users').where({ studentId }).limit(1).get();
+  if (!data || data.length === 0) {
+    return { allowed: false, reason: '用户不存在' };
+  }
+
+  const quota = getMiniMaxRequestQuota();
+  const counter = await getOrCreateCounter(studentId);
+  const nextDaily = (counter.minimaxDailyRequests || 0) + requestUnits;
+  const nextWeekly = (counter.minimaxWeeklyRequests || 0) + requestUnits;
+
+  if (nextDaily > quota.dailyRequestLimit) {
+    return { allowed: false, reason: `MiniMax 今日调用次数已用完（${quota.dailyRequestLimit} 次/日）` };
+  }
+
+  if (nextWeekly > quota.weeklyRequestLimit) {
+    return { allowed: false, reason: `MiniMax 本周调用次数已用完（${quota.weeklyRequestLimit} 次/周）` };
+  }
+
+  return {
+    allowed: true,
+    dailyRemaining: quota.dailyRequestLimit - (counter.minimaxDailyRequests || 0),
+    weeklyRemaining: quota.weeklyRequestLimit - (counter.minimaxWeeklyRequests || 0),
+  };
+}
+
+async function addMiniMaxRequests(studentId, requestUnits = 1) {
+  if (!requestUnits || requestUnits <= 0) return;
+  await getOrCreateCounter(studentId);
+  await db.collection('token_counters')
+    .where({ studentId })
+    .update({
+      minimaxDailyRequests: _.inc(requestUnits),
+      minimaxWeeklyRequests: _.inc(requestUnits),
+    });
+}
+
+module.exports = { checkQuota, addTokens, checkMiniMaxQuota, addMiniMaxRequests };

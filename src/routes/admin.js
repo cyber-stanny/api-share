@@ -116,6 +116,8 @@ router.get('/students', adminAuth, async (req, res) => {
         quota: s.quota,
         dailyTokensUsed: counter?.dailyTokens || 0,
         weeklyTokensUsed: counter?.weeklyTokens || 0,
+        minimaxDailyRequestsUsed: counter?.minimaxDailyRequests || 0,
+        minimaxWeeklyRequestsUsed: counter?.minimaxWeeklyRequests || 0,
         createdAt: s.createdAt,
       };
     }));

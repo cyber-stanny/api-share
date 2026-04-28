@@ -7,6 +7,7 @@
  */
 require('dotenv').config();
 const cloudbase = require('@cloudbase/node-sdk');
+const { UPSTREAM_PRESETS } = require('../src/services/modelCatalog');
 
 async function main() {
   const envId = process.env.CLOUDBASE_ENV_ID;
@@ -22,48 +23,29 @@ async function main() {
   });
   const db = app.database();
 
-  // 检查是否已有上游配置
-  const { data } = await db.collection('upstreams').limit(1).get();
-  if (data && data.length > 0) {
-    console.log('上游配置已存在，如需重新配置请先清空 upstreams 集合');
-    process.exit(0);
-  }
-
-  const mimoModels = [
-    'mimo-v2.5-pro',
-    'mimo-v2.5',
-    'mimo-v2.5-tts-voiceclone',
-    'mimo-v2.5-tts-voicedesign',
-    'mimo-v2.5-tts',
-    'mimo-v2-pro',
-    'mimo-v2-omni',
-    'mimo-v2-tts',
-  ];
-
-  const upstreams = [
-    {
-      name: 'Mimo (OpenAI)',
-      baseUrl: 'https://token-plan-cn.xiaomimimo.com',
-      apiKey: process.env.MIMO_API_KEY || 'sk-xxx-mimo-key',
-      models: mimoModels,
-      protocol: 'openai',
-      enabled: true,
-      priority: 10,
-      createdAt: new Date(),
-    },
-    {
-      name: 'Mimo (Anthropic)',
-      baseUrl: 'https://token-plan-cn.xiaomimimo.com',
-      apiKey: process.env.MIMO_API_KEY || 'sk-xxx-mimo-key',
-      models: mimoModels,
-      protocol: 'anthropic',
-      enabled: true,
-      priority: 10,
-      createdAt: new Date(),
-    },
-  ];
+  const upstreams = UPSTREAM_PRESETS.map(preset => ({
+    name: preset.name,
+    provider: preset.provider,
+    baseUrl: preset.baseUrl,
+    apiKey: process.env[preset.apiKeyEnv] || `sk-xxx-${preset.apiKeyEnv.toLowerCase()}`,
+    models: preset.models,
+    protocol: preset.protocol,
+    enabled: preset.enabled,
+    priority: preset.priority,
+    createdAt: new Date(),
+  }));
 
   for (const u of upstreams) {
+    const { data } = await db.collection('upstreams')
+      .where({ name: u.name, protocol: u.protocol })
+      .limit(1)
+      .get();
+
+    if (data && data.length > 0) {
+      console.log(`已存在上游，跳过: ${u.name} (${u.models.join(', ')})`);
+      continue;
+    }
+
     await db.collection('upstreams').add(u);
     console.log(`已添加上游: ${u.name} (${u.models.join(', ')})`);
   }

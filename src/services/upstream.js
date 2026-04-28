@@ -1,4 +1,5 @@
 const { db } = require('../db');
+const { MODEL_ORDER, getModelMetadata, isTextModelSupported } = require('./modelCatalog');
 
 // 缓存上游配置（避免每次请求都查库）
 let cache = { data: null, time: 0 };
@@ -24,7 +25,7 @@ async function findUpstream(model, protocol = 'openai') {
 
   // 找到支持该模型和协议的所有上游，按 priority 降序
   const candidates = upstreams
-    .filter(u => u.models && u.models.includes(model) && (u.protocol || 'openai') === protocol)
+    .filter(u => isTextModelSupported(model) && u.models && u.models.includes(model) && (u.protocol || 'openai') === protocol)
     .sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
   if (candidates.length === 0) {
@@ -38,19 +39,52 @@ async function findUpstream(model, protocol = 'openai') {
 }
 
 async function getAvailableModels(protocol) {
-  const upstreams = await getUpstreams();
-  const modelSet = new Set();
+  const models = await getAvailableModelDetails(protocol);
+  return models.map(model => model.id);
+}
 
-  for (const u of upstreams) {
-    if (protocol && (u.protocol || 'openai') !== protocol) continue;
-    if (u.models) {
-      for (const m of u.models) {
-        modelSet.add(m);
-      }
+async function getAvailableModelDetails(protocol) {
+  const upstreams = await getUpstreams();
+  const modelMap = new Map();
+
+  for (const upstream of upstreams) {
+    if (protocol && (upstream.protocol || 'openai') !== protocol) continue;
+    if (!Array.isArray(upstream.models)) continue;
+
+    for (const modelId of upstream.models) {
+      if (!isTextModelSupported(modelId)) continue;
+      const meta = getModelMetadata(modelId);
+      const existing = modelMap.get(modelId) || {
+        id: modelId,
+        name: modelId,
+        provider: upstream.provider || meta.provider || upstream.name || 'API Share',
+        protocols: new Set(),
+      };
+
+      existing.provider = existing.provider || upstream.provider || meta.provider || upstream.name || 'API Share';
+      existing.protocols.add(upstream.protocol || 'openai');
+      modelMap.set(modelId, existing);
     }
   }
 
-  return [...modelSet];
+  return [...modelMap.values()]
+    .sort((a, b) => {
+      const ai = MODEL_ORDER.indexOf(a.id);
+      const bi = MODEL_ORDER.indexOf(b.id);
+      const aRank = ai === -1 ? Number.MAX_SAFE_INTEGER : ai;
+      const bRank = bi === -1 ? Number.MAX_SAFE_INTEGER : bi;
+      if (aRank !== bRank) return aRank - bRank;
+      return a.id.localeCompare(b.id);
+    })
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      provider: item.provider,
+      protocols: [...item.protocols].sort((a, b) => {
+        const order = { openai: 0, anthropic: 1 };
+        return (order[a] ?? 99) - (order[b] ?? 99);
+      }),
+    }));
 }
 
-module.exports = { findUpstream, getAvailableModels, clearCache };
+module.exports = { findUpstream, getAvailableModels, getAvailableModelDetails, clearCache };

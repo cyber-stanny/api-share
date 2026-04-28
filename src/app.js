@@ -5,6 +5,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const proxyRoutes = require('./routes/proxy');
 const { corsMiddleware } = require('./middleware/cors');
+const config = require('./config');
 
 const app = express();
 
@@ -39,7 +40,18 @@ app.get('/', (req, res) => {
 // 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/v1', proxyRoutes);
+if (config.proxy.enabled) {
+  app.use('/v1', proxyRoutes);
+} else {
+  app.use('/v1', (req, res) => {
+    res.status(503).json({
+      error: {
+        message: '当前 CloudBase 部署仅用于注册、管理和发放 API Key，API 代理已关闭。',
+        type: 'service_unavailable',
+      },
+    });
+  });
+}
 
 // 管理后台页面
 app.get('/admin', (req, res) => {

@@ -5,6 +5,7 @@
 require('dotenv').config();
 const cloudbase = require('@cloudbase/node-sdk');
 const bcrypt = require('bcryptjs');
+const { UPSTREAM_PRESETS } = require('../src/services/modelCatalog');
 
 const COLLECTIONS = [
   'users',
@@ -72,48 +73,31 @@ async function main() {
   // 3. 初始化上游配置
   console.log('\n--- 初始化上游配置 ---');
   try {
-    const { data } = await db.collection('upstreams').limit(1).get();
-    if (data && data.length > 0) {
-      console.log('上游配置已存在，跳过');
-    } else {
-      const mimoModels = [
-        'mimo-v2.5-pro',
-        'mimo-v2.5',
-        'mimo-v2.5-tts-voiceclone',
-        'mimo-v2.5-tts-voicedesign',
-        'mimo-v2.5-tts',
-        'mimo-v2-pro',
-        'mimo-v2-omni',
-        'mimo-v2-tts',
-      ];
+    const upstreams = UPSTREAM_PRESETS.map(preset => ({
+      name: preset.name,
+      provider: preset.provider,
+      baseUrl: preset.baseUrl,
+      apiKey: process.env[preset.apiKeyEnv] || `sk-xxx-${preset.apiKeyEnv.toLowerCase()}`,
+      models: preset.models,
+      protocol: preset.protocol,
+      enabled: preset.enabled,
+      priority: preset.priority,
+      createdAt: new Date(),
+    }));
 
-      const upstreams = [
-        {
-          name: 'Mimo (OpenAI)',
-          baseUrl: 'https://token-plan-cn.xiaomimimo.com',
-          apiKey: process.env.MIMO_API_KEY || 'sk-xxx',
-          models: mimoModels,
-          protocol: 'openai',
-          enabled: true,
-          priority: 10,
-          createdAt: new Date(),
-        },
-        {
-          name: 'Mimo (Anthropic)',
-          baseUrl: 'https://token-plan-cn.xiaomimimo.com',
-          apiKey: process.env.MIMO_API_KEY || 'sk-xxx',
-          models: mimoModels,
-          protocol: 'anthropic',
-          enabled: true,
-          priority: 10,
-          createdAt: new Date(),
-        },
-      ];
+    for (const u of upstreams) {
+      const { data } = await db.collection('upstreams')
+        .where({ name: u.name, protocol: u.protocol })
+        .limit(1)
+        .get();
 
-      for (const u of upstreams) {
-        await db.collection('upstreams').add(u);
-        console.log(`✓ ${u.name} (${u.models.join(', ')})`);
+      if (data && data.length > 0) {
+        console.log(`- ${u.name} (已存在)`);
+        continue;
       }
+
+      await db.collection('upstreams').add(u);
+      console.log(`✓ ${u.name} (${u.models.join(', ')})`);
     }
   } catch (err) {
     console.error('✗ 上游配置失败:', err.message);

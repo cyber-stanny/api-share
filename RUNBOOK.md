@@ -7,6 +7,8 @@
 - `JWT_SECRET` 使用强随机值，不使用示例值。
 - `ADMIN_INIT_PASSWORD` 不使用默认值，初始化后尽快更换管理员密码。
 - `CORS_ORIGINS` 只配置实际学生端/管理端域名；多个域名用英文逗号分隔。
+- 独立服务器完整部署时，设置 `PROXY_ENABLED=true`，并配置 `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 访问 CloudBase 数据库。
+- CloudBase 免费版只用于注册、管理和 Key 发放时，设置 `PROXY_ENABLED=false`，避免 `/v1/*` 被误用为稳定 API 代理。
 - 上游 API Key 只放在环境变量或数据库中，不写入代码和文档。
 - 白名单只导入本次试运行的学生学号。
 - 默认额度使用保守值，避免单个学生耗尽上游预算。
@@ -32,14 +34,19 @@ npm audit fix
 
 ## 异常处理
 
-## MiMo Token Plan 容量观察
+## MiMo / MiniMax Token Plan 容量观察
 
-当前 MiMo 上游保护默认值：
+当前 MiMo / MiniMax 上游保护默认值：
 
 - 并发：`UPSTREAM_MIMO_MAX_CONCURRENT=8`
 - 队列：`UPSTREAM_MIMO_MAX_QUEUE=10`
 - 排队超时：`UPSTREAM_MIMO_QUEUE_TIMEOUT_MS=30000`
 - 速率：`UPSTREAM_MIMO_RPM=80`
+- MiniMax 默认使用同一组限制参数，若需要单独调节可改：
+  - `UPSTREAM_MINIMAX_MAX_CONCURRENT=8`
+  - `UPSTREAM_MINIMAX_MAX_QUEUE=10`
+  - `UPSTREAM_MINIMAX_QUEUE_TIMEOUT_MS=30000`
+  - `UPSTREAM_MINIMAX_RPM=80`
 
 查看当前实例内存指标：
 
@@ -50,7 +57,7 @@ curl -H "Authorization: Bearer <ADMIN_JWT>" \
 
 重点看：
 
-- `maxConcurrent`：当天达到过的最大 MiMo 并发。
+- `maxConcurrent`：当天达到过的最大并发。
 - `maxQueueDepth`：当天最大排队深度。
 - `queueFullRejected`：队列满导致的拒绝次数。
 - `queueTimeoutRejected`：排队超过 30 秒的拒绝次数。

@@ -11,6 +11,7 @@
         "JWT_SECRET": "{{JWT_SECRET}}",
         "ADMIN_INIT_PASSWORD": "{{ADMIN_INIT_PASSWORD}}",
         "CORS_ORIGINS": "{{CORS_ORIGINS}}",
+        "PROXY_ENABLED": "{{PROXY_ENABLED}}",
         "SILICONFLOW_API_KEY": "{{SILICONFLOW_API_KEY}}",
         "MIMO_API_KEY": "{{MIMO_API_KEY}}"
       }

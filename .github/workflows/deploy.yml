@@ -19,7 +19,7 @@ jobs:
         run: npm install
 
       - name: Install CloudBase CLI
-        run: npm install -g @cloudbase/cli @cloudbase/framework-plugin-node
+        run: npm install -g @cloudbase/cli
 
       - name: Login to CloudBase
         env:
@@ -35,11 +35,4 @@ jobs:
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           MIMO_API_KEY: ${{ secrets.MIMO_API_KEY }}
-        run: |
-          sed -i "s/{{CLOUDBASE_ENV_ID}}/$CLOUDBASE_ENV_ID/g" cloudbaserc.json
-          sed -i "s/{{JWT_SECRET}}/$JWT_SECRET/g" cloudbaserc.json
-          sed -i "s/{{ADMIN_INIT_PASSWORD}}/$ADMIN_INIT_PASSWORD/g" cloudbaserc.json
-          sed -i "s#{{CORS_ORIGINS}}#$CORS_ORIGINS#g" cloudbaserc.json
-          sed -i "s/{{SILICONFLOW_API_KEY}}/$SILICONFLOW_API_KEY/g" cloudbaserc.json
-          sed -i "s/{{MIMO_API_KEY}}/$MIMO_API_KEY/g" cloudbaserc.json
-          tcb framework deploy
+        run: npm run deploy

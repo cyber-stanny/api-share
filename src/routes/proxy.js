@@ -1,16 +1,17 @@
 const express = require('express');
 const { apiKeyAuth } = require('../middleware/auth');
-const { findUpstream, getAvailableModels } = require('../services/upstream');
-const { checkQuota, addTokens } = require('../services/quota');
+const { findUpstream, getAvailableModelDetails } = require('../services/upstream');
+const { checkQuota, addTokens, checkMiniMaxQuota, addMiniMaxRequests } = require('../services/quota');
 const { checkRateLimit, acquireConcurrent, releaseConcurrent } = require('../services/rateLimit');
-const { acquireUpstreamSlot } = require('../services/upstreamLimiter');
+const { acquireUpstreamSlot, isMiniMaxUpstream } = require('../services/upstreamLimiter');
 const { recordUsage } = require('../services/usage');
+const { getMiniMaxRequestUnits } = require('../services/modelCatalog');
 
 const router = express.Router();
 
-async function persistUsageAndTokens({ studentId, model, upstreamId, usage, status }) {
-  await recordUsage({ studentId, model, upstreamId, usage, status });
-  if (usage?.total_tokens) {
+async function persistUsageAndTokens({ studentId, model, upstreamId, usage, status, billingType, billingUnits }) {
+  await recordUsage({ studentId, model, upstreamId, usage, status, billingType, billingUnits });
+  if (billingType === 'tokens' && usage?.total_tokens) {
     try {
       await addTokens(studentId, usage.total_tokens);
     } catch (err) {
@@ -72,11 +73,11 @@ const PROTOCOLS = {
 
 // 列出可用模型
 router.get('/models', async (req, res) => {
-  const models = await getAvailableModels();
+  const models = await getAvailableModelDetails();
   res.json({
     object: 'list',
-    data: models.map(id => ({
-      id,
+    data: models.map(model => ({
+      id: model.id,
       object: 'model',
       owned_by: 'api-share',
     })),
@@ -90,12 +91,6 @@ async function handleProxy(req, res, protocol) {
 
   if (!model) {
     return res.status(400).json(proto.invalidRequestMsg('缺少 model 参数'));
-  }
-
-  const quotaResult = await checkQuota(req.student.studentId);
-  if (!quotaResult.allowed) {
-    res.set('Retry-After', '86400');
-    return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
   }
 
   const rateResult = checkRateLimit(req.student.studentId);
@@ -112,6 +107,8 @@ async function handleProxy(req, res, protocol) {
   let upstream;
   let upstreamSlot = null;
   let released = false;
+  let billingType = 'tokens';
+  let billingUnits = 0;
   const releaseOnce = () => {
     if (released) return;
     released = true;
@@ -124,9 +121,29 @@ async function handleProxy(req, res, protocol) {
       return res.status(404).json(proto.invalidRequestMsg(`模型 ${model} 不可用`));
     }
 
+    if (isMiniMaxUpstream(upstream)) {
+      billingType = 'requests';
+      billingUnits = getMiniMaxRequestUnits(model) || 1;
+      const quotaResult = await checkMiniMaxQuota(req.student.studentId, billingUnits);
+      if (!quotaResult.allowed) {
+        res.set('Retry-After', '86400');
+        return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
+      }
+    } else {
+      const quotaResult = await checkQuota(req.student.studentId);
+      if (!quotaResult.allowed) {
+        res.set('Retry-After', '86400');
+        return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
+      }
+    }
+
     upstreamSlot = await acquireUpstreamSlot(upstream);
     if (!upstreamSlot.allowed) {
       return res.status(429).json(proto.rateLimitMsg(upstreamSlot.reason || '上游繁忙，请稍后再试'));
+    }
+
+    if (isMiniMaxUpstream(upstream)) {
+      await addMiniMaxRequests(req.student.studentId, billingUnits);
     }
 
     const requestBody = proto.prepareBody({ ...req.body }, stream);
@@ -160,6 +177,8 @@ async function handleProxy(req, res, protocol) {
         upstreamId: upstream._id,
         usage: null,
         status: upstreamRes.status,
+        billingType,
+        billingUnits,
       });
 
       return res.status(upstreamRes.status).json(errBody);
@@ -229,6 +248,8 @@ async function handleProxy(req, res, protocol) {
             upstreamId: upstream._id,
             usage: capturedUsage,
             status: streamStatus,
+            billingType,
+            billingUnits,
           });
         } catch (err) {
           console.error('Failed to persist streaming usage:', {
@@ -249,12 +270,14 @@ async function handleProxy(req, res, protocol) {
     const usage = proto.parseNonStreamUsage(data);
 
     await persistUsageAndTokens({
-      studentId: req.student.studentId,
-      model: data.model || model,
-      upstreamId: upstream._id,
-      usage,
-      status: upstreamRes.status,
-    });
+        studentId: req.student.studentId,
+        model: data.model || model,
+        upstreamId: upstream._id,
+        usage,
+        status: upstreamRes.status,
+        billingType,
+        billingUnits,
+      });
 
     return res.status(upstreamRes.status).json(data);
   } catch (err) {
@@ -268,6 +291,8 @@ async function handleProxy(req, res, protocol) {
           upstreamId: upstream?._id,
           usage: null,
           status: 502,
+          billingType,
+          billingUnits,
         });
       } catch (usageErr) {
         console.error('Failed to record proxy error usage:', usageErr);

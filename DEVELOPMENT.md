@@ -2,7 +2,7 @@
 
 ## 项目概览
 
-大模型 API 中转平台。学生通过学号注册获取 API Key，调用 OpenAI 兼容接口。平台转发到上游（硅基流动 / Mimo），负责额度控制和限流。
+大模型 API 中转平台。学生通过学号注册获取 API Key，调用 OpenAI 兼容接口。平台转发到上游（硅基流动 / Mimo / MiniMax），负责额度控制和限流。
 
 支持两种协议：OpenAI 格式（OpenCode 等客户端）和 Anthropic 格式（Claude Code）。
 
@@ -27,6 +27,7 @@ api-share/
 │   ├── services/
 │   │   ├── quota.js            # 额度检查/统计
 │   │   ├── rateLimit.js        # 内存限流
+│   │   ├── modelCatalog.js     # 模型和上游预设
 │   │   ├── upstream.js         # 上游路由（带缓存）
 │   │   └── usage.js            # 调用日志
 │   └── utils/
@@ -62,12 +63,24 @@ api-share/
 - `POST /v1/chat/completions` - 代理请求（OpenAI 格式，适用于 OpenCode 等）
 - `POST /v1/messages` - 代理请求（Anthropic 格式，适用于 Claude Code）
 
+> CloudBase 免费版存在请求体大小等平台限制，不适合作为大模型 API 代理承载大文件或长上下文请求。设置 `PROXY_ENABLED=false` 后，`/api/auth`、`/api/admin` 和页面仍可用于注册、登录、白名单管理和 API Key 发放，`/v1/*` 会返回 503 提示代理已关闭。
+
 ### 上游协议支持
 
 | 上游 | OpenAI (`/v1/chat/completions`) | Anthropic (`/v1/messages`) |
 |------|------|------|
 | 硅基流动 | glm-4-flash, glm-4-plus, moonshot-v1-8k/32k/128k | 不支持 |
 | Mimo | mimo-v2.5-pro | mimo-v2.5-pro |
+| MiniMax | MiniMax-M2.7, MiniMax-M2.7-highspeed, MiniMax-M2.5, MiniMax-M2.5-highspeed, MiniMax-M2.1, MiniMax-M2.1-highspeed, MiniMax-M2 | MiniMax-M2.7, MiniMax-M2.7-highspeed, MiniMax-M2.5, MiniMax-M2.5-highspeed, MiniMax-M2.1, MiniMax-M2.1-highspeed, MiniMax-M2 |
+
+MiniMax 学生端默认推荐使用 `MiniMax-M2.7` 和 `MiniMax-M2.7-highspeed`，接入指导里也按这两个模型写。后续如果 MiniMax Token Plan 继续开放新的文本模型，只要仍然兼容当前代理协议，就可以继续加到 `upstreams.models` 里。
+
+当前学生额度口径已经拆分：
+
+- MiMo：继续沿用 token 额度
+- MiniMax：按调用次数统计，默认 `1000` 次/日，`4000` 次/周，`highspeed` 先按 1 次调用计
+
+注意：当前项目只代理文本接口 `POST /v1/chat/completions` 和 `POST /v1/messages`，所以像 MiMo 的 TTS 这类非文本模型会被自动过滤，不会出现在学生端列表里，也不会被 `/v1/models` 暴露出来。
 
 ### 管理页面
 - `GET /admin` - 管理后台 SPA
@@ -83,7 +96,27 @@ api-share/
 | token_counters | Token 用量计数器（studentId, dailyTokens, weeklyTokens），按日/周自动重置 |
 | admins | 管理员账号 |
 
+`upstreams` 是运行时配置表，不是学生业务数据。它保存的是：
+
+- 上游名字和供应商标识
+- `baseUrl`
+- `apiKey`
+- 支持的 `models[]`
+- `protocol`（`openai` / `anthropic`）
+- `enabled`
+- `priority`
+
+学生账号、白名单、调用日志、额度计数都在其他集合里，不和上游密钥混在一起。
+
 ## 部署流程
+
+### 独立服务器部署（推荐第一阶段）
+
+完整 Express 应用可以直接部署到云服务器，数据库继续使用 CloudBase。服务器部署时设置 `PROXY_ENABLED=true`，并配置 `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 访问 CloudBase 数据库。
+
+详细步骤见 [docs/server-deploy.md](docs/server-deploy.md)。
+
+### CloudBase 函数部署
 
 1. 在腾讯云创建 CloudBase 环境
 2. 在 GitHub 设置 Secrets: TCB_SECRET_ID, TCB_SECRET_KEY, CLOUDBASE_ENV_ID, JWT_SECRET, ADMIN_INIT_PASSWORD
@@ -94,6 +127,7 @@ api-share/
    CLOUDBASE_ENV_ID=xxx node scripts/seed-upstreams.js
    ```
 5. 在数据库或管理后台中修改 upstreams 的 apiKey 为真实 Key
+6. 如果要接入 MiniMax，补上 `MINIMAX_API_KEY` 并保留 `upstreams` 里对应的 MiniMax 记录
 
 ## 本地开发
 

@@ -26,12 +26,28 @@ const config = {
       queueTimeoutMs: parseInt(process.env.UPSTREAM_MIMO_QUEUE_TIMEOUT_MS || '30000', 10),
       rpm: parseInt(process.env.UPSTREAM_MIMO_RPM || '80', 10),
     },
+    minimax: {
+      maxConcurrent: parseInt(process.env.UPSTREAM_MINIMAX_MAX_CONCURRENT || process.env.UPSTREAM_MIMO_MAX_CONCURRENT || '8', 10),
+      maxQueue: parseInt(process.env.UPSTREAM_MINIMAX_MAX_QUEUE || process.env.UPSTREAM_MIMO_MAX_QUEUE || '10', 10),
+      queueTimeoutMs: parseInt(process.env.UPSTREAM_MINIMAX_QUEUE_TIMEOUT_MS || process.env.UPSTREAM_MIMO_QUEUE_TIMEOUT_MS || '30000', 10),
+      rpm: parseInt(process.env.UPSTREAM_MINIMAX_RPM || process.env.UPSTREAM_MIMO_RPM || '80', 10),
+    },
+  },
+
+  proxy: {
+    enabled: process.env.PROXY_ENABLED !== 'false',
   },
 
   // 默认额度（按 token 计算）
   defaultQuota: {
     dailyTokenLimit: 500000,    // 每日 50 万 token
     weeklyTokenLimit: 2000000,  // 每周 200 万 token
+  },
+
+  // MiniMax 默认额度（按调用次数计算）
+  defaultMiniMaxQuota: {
+    dailyRequestLimit: parseInt(process.env.MINIMAX_DAILY_REQUEST_LIMIT || '1000', 10),
+    weeklyRequestLimit: parseInt(process.env.MINIMAX_WEEKLY_REQUEST_LIMIT || '4000', 10),
   },
 };
 

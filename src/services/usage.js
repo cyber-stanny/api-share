@@ -3,7 +3,7 @@ const { db } = require('../db');
 const RETENTION_DAYS = 3;
 
 // 异步记录调用日志（不阻塞响应）
-async function recordUsage({ studentId, model, upstreamId, usage, status }) {
+async function recordUsage({ studentId, model, upstreamId, usage, status, billingType = 'tokens', billingUnits = 0 }) {
   try {
     await db.collection('usage_records').add({
       studentId,
@@ -12,6 +12,8 @@ async function recordUsage({ studentId, model, upstreamId, usage, status }) {
       promptTokens: usage?.prompt_tokens || 0,
       completionTokens: usage?.completion_tokens || 0,
       totalTokens: usage?.total_tokens || 0,
+      billingType,
+      billingUnits,
       status,
       createdAt: new Date(),
     });
@@ -25,13 +27,13 @@ async function cleanupOldRecords() {
   if (Math.random() > 0.01) return;
   try {
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000);
-    const { list } = await db.collection('usage_records')
+    const { data } = await db.collection('usage_records')
       .where({ createdAt: db.command.lt(cutoff) })
       .orderBy('createdAt', 'asc')
       .limit(500)
       .get();
-    if (list.length === 0) return;
-    const ids = list.map(r => r._id);
+    if (!data || data.length === 0) return;
+    const ids = data.map(r => r._id);
     await db.collection('usage_records').where({ _id: db.command.in(ids) }).remove();
     console.log(`Cleaned up ${ids.length} old usage records`);
   } catch (err) {

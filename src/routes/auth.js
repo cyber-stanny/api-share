@@ -6,7 +6,7 @@ const { generateApiKey, hashApiKey, getApiKeyPrefix, hashPassword, verifyPasswor
 const { studentAuth } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
-const { getAvailableModels } = require('../services/upstream');
+const { getAvailableModelDetails } = require('../services/upstream');
 
 const router = express.Router();
 
@@ -194,6 +194,7 @@ router.get('/profile', studentAuth, async (req, res) => {
       .get();
     const counter = counters && counters.length > 0 ? counters[0] : {};
     const quota = user.quota || config.defaultQuota;
+    const miniMaxQuota = config.defaultMiniMaxQuota;
 
     return success(res, {
       studentId: user.studentId,
@@ -202,6 +203,9 @@ router.get('/profile', studentAuth, async (req, res) => {
       quota,
       dailyTokensUsed: counter.dailyTokens || 0,
       weeklyTokensUsed: counter.weeklyTokens || 0,
+      minimaxDailyRequestsUsed: counter.minimaxDailyRequests || 0,
+      minimaxWeeklyRequestsUsed: counter.minimaxWeeklyRequests || 0,
+      minimaxQuota: miniMaxQuota,
       createdAt: user.createdAt,
     });
   } catch (err) {
@@ -252,23 +256,18 @@ router.get('/usage', studentAuth, async (req, res) => {
 // 学生端可用模型
 router.get('/models', studentAuth, async (req, res) => {
   try {
-    const [openaiModels, anthropicModels] = await Promise.all([
-      getAvailableModels('openai'),
-      getAvailableModels('anthropic'),
-    ]);
-    const protocolsByModel = new Map();
-    for (const model of openaiModels) protocolsByModel.set(model, ['openai']);
-    for (const model of anthropicModels) {
-      protocolsByModel.set(model, [...(protocolsByModel.get(model) || []), 'anthropic']);
+    const models = await getAvailableModelDetails();
+    const grouped = new Map();
+
+    for (const model of models) {
+      const provider = model.provider || 'API Share';
+      if (!grouped.has(provider)) grouped.set(provider, []);
+      grouped.get(provider).push(model);
     }
 
     return success(res, {
-      models: [...protocolsByModel.entries()].map(([id, protocols]) => ({
-        id,
-        name: id,
-        provider: 'MiMo Token Plan',
-        protocols,
-      })),
+      models,
+      groups: [...grouped.entries()].map(([provider, items]) => ({ provider, items })),
     });
   } catch (err) {
     console.error('Student models query error:', err);

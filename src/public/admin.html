@@ -79,7 +79,7 @@ input[type="number"] { width: 80px; }
         </div>
         <div class="card-body">
           <table>
-            <thead><tr><th>学号</th><th>姓名</th><th>Key 前缀</th><th>日限额 (token)</th><th>日已用</th><th>周限额 (token)</th><th>周已用</th><th>操作</th></tr></thead>
+            <thead><tr><th>学号</th><th>姓名</th><th>Key 前缀</th><th>MiMo 日限额</th><th>MiMo 日已用</th><th>MiMo 周限额</th><th>MiMo 周已用</th><th>MiniMax 日调用</th><th>MiniMax 周调用</th><th>操作</th></tr></thead>
             <tbody id="studentTable"></tbody>
           </table>
         </div>
@@ -127,7 +127,13 @@ input[type="number"] { width: 80px; }
 
 <script>
 let token = localStorage.getItem('adminToken');
-const API = '';
+function getMountPath() {
+  const firstSegment = window.location.pathname.split('/').filter(Boolean)[0] || '';
+  const appRoutes = new Set(['admin', 'api', 'health', 'v1']);
+  return firstSegment && !appRoutes.has(firstSegment) ? `/${firstSegment}` : '';
+}
+
+const API = getMountPath();
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -197,6 +203,7 @@ async function loadStudents() {
       <td>${escapeHtml(s.studentId)}</td><td>${escapeHtml(s.name) || '-'}</td><td><code>${escapeHtml(s.apiKeyPrefix)}...</code></td>
       <td>${fmtTokens(dailyLimit)}</td><td><span class="badge ${dailyBadge}">${fmtTokens(s.dailyTokensUsed)} (${dailyPct}%)</span></td>
       <td>${fmtTokens(weeklyLimit)}</td><td><span class="badge ${weeklyBadge}">${fmtTokens(s.weeklyTokensUsed)} (${weeklyPct}%)</span></td>
+      <td>${fmtTokens(s.minimaxDailyRequestsUsed || 0)}</td><td>${fmtTokens(s.minimaxWeeklyRequestsUsed || 0)}</td>
       <td><button class="btn btn-sm" onclick="editQuota('${escapeHtml(s._id)}','${escapeHtml(s.studentId)}',${dailyLimit},${weeklyLimit})">调额度</button></td>
     </tr>`;
   }).join('');
