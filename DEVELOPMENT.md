@@ -1,5 +1,7 @@
 # API Share 开发文档
 
+如果你是仓库共建者，建议先读 [`CONTRIBUTING.md`](CONTRIBUTING.md)，它补充了当前核心实现、文件入口和协作约定。
+
 ## 项目概览
 
 大模型 API 中转平台。学生通过学号注册获取 API Key，调用 OpenAI 兼容接口。平台转发到上游（硅基流动 / Mimo / MiniMax），负责额度控制和限流。
