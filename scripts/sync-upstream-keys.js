@@ -3,24 +3,40 @@
  *
  * 用法：
  *   CLOUDBASE_ENV_ID=xxx MINIMAX_API_KEY=xxx node scripts/sync-upstream-keys.js
+ *   CLOUDBASE_ENV_ID=xxx DEEPSEEK_API_KEY=xxx node scripts/sync-upstream-keys.js
  *
  * 说明：
  * - 不会把密钥写入仓库，只更新数据库中的 upstream 记录
- * - 默认只同步 MiniMax 记录；如需扩展其他供应商，可复用同样模式
+ * - 会同步当前环境变量中已设置的 MiniMax / MiMo / DeepSeek Key
  */
 require('dotenv').config();
 const cloudbase = require('@cloudbase/node-sdk');
+const { UPSTREAM_PRESETS } = require('../src/services/modelCatalog');
 
 async function main() {
   const envId = process.env.CLOUDBASE_ENV_ID;
-  const apiKey = process.env.MINIMAX_API_KEY;
 
   if (!envId) {
     console.error('请设置 CLOUDBASE_ENV_ID 环境变量');
     process.exit(1);
   }
-  if (!apiKey) {
-    console.error('请设置 MINIMAX_API_KEY 环境变量');
+
+  const syncPresets = [];
+  for (const preset of UPSTREAM_PRESETS) {
+    const apiKey = process.env[preset.apiKeyEnv];
+    if (apiKey) {
+      syncPresets.push({
+        name: preset.name,
+        protocol: preset.protocol,
+        provider: preset.provider,
+        apiKey,
+        envName: preset.apiKeyEnv,
+      });
+    }
+  }
+
+  if (syncPresets.length === 0) {
+    console.error('请至少设置一个上游 Key 环境变量：MIMO_API_KEY / MINIMAX_API_KEY / DEEPSEEK_API_KEY');
     process.exit(1);
   }
 
@@ -31,26 +47,29 @@ async function main() {
   });
   const db = app.database();
 
-  const { data } = await db.collection('upstreams').where({
-    provider: 'MiniMax Token Plan',
-  }).get();
+  let totalUpdated = 0;
+  for (const { name, protocol, provider, apiKey, envName } of syncPresets) {
+    const { data } = await db.collection('upstreams')
+      .where({ name, protocol })
+      .limit(1)
+      .get();
 
-  if (!data || data.length === 0) {
-    console.log('未找到 MiniMax 上游记录，请先执行 scripts/seed-upstreams.js');
-    return;
-  }
+    if (!data || data.length === 0) {
+      console.log(`未找到 ${name} (${protocol}) 上游记录，请先执行 scripts/seed-upstreams.js`);
+      continue;
+    }
 
-  let updated = 0;
-  for (const upstream of data) {
+    const upstream = data[0];
     await db.collection('upstreams').doc(upstream._id).update({
       apiKey,
+      provider: upstream.provider || provider,
       updatedAt: new Date(),
     });
-    updated++;
-    console.log(`已更新: ${upstream.name} (${upstream.protocol})`);
+    totalUpdated++;
+    console.log(`已更新: ${upstream.name} (${upstream.protocol}) <- ${envName}`);
   }
 
-  console.log(`\n同步完成，共更新 ${updated} 条 MiniMax 上游记录`);
+  console.log(`\n同步完成，共更新 ${totalUpdated} 条上游记录`);
 }
 
 main().catch((err) => {

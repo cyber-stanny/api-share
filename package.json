@@ -8,7 +8,10 @@
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:reload": "pm2 reload api-share",
     "deploy": "bash scripts/deploy-cloudbase.sh",
-    "sync:minimax": "node scripts/sync-upstream-keys.js"
+    "sync:minimax": "node scripts/sync-upstream-keys.js",
+    "sync:upstreams": "node scripts/sync-upstream-keys.js",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
   },
   "dependencies": {
     "@cloudbase/node-sdk": "^2.0.0",

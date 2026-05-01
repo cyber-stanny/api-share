@@ -7,6 +7,7 @@ const { studentAuth } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getAvailableModelDetails } = require('../services/upstream');
+const { getUsageSummary, getDeepSeekCostQuota } = require('../services/quota');
 
 const router = express.Router();
 
@@ -144,13 +145,59 @@ router.post('/login', studentLoginIpLimiter, studentLoginAccountLimiter, async (
     const token = jwt.sign(
       { id: user._id, studentId: user.studentId, role: 'student' },
       config.jwtSecret,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     return success(res, { token, studentId: user.studentId });
   } catch (err) {
     console.error('Login error:', err);
     return error(res, '登录失败', 500);
+  }
+});
+
+const studentResetLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 3,
+  keyGenerator: (req) => `student-reset:${req.ip}:${req.body?.studentId || ''}`,
+});
+
+// 重置密码（学号 + 姓名验证）
+router.post('/reset-password', studentResetLimiter, async (req, res) => {
+  try {
+    const { studentId, name, newPassword } = req.body;
+
+    if (!isValidShortText(studentId, 64)) {
+      return error(res, '学号不能为空');
+    }
+    if (!isValidShortText(name, 64)) {
+      return error(res, '姓名不能为空');
+    }
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      return error(res, '新密码至少 6 位');
+    }
+
+    const { data } = await db.collection('users')
+      .where({ studentId })
+      .limit(1)
+      .get();
+
+    if (!data || data.length === 0) {
+      return error(res, '学号不存在');
+    }
+
+    const user = data[0];
+    // 如果学生注册时填写了姓名，则验证姓名匹配
+    if (user.name && user.name !== name.trim()) {
+      return error(res, '姓名不匹配');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await db.collection('users').where({ studentId }).update({ passwordHash });
+
+    return success(res, { message: '密码已重置，请使用新密码登录' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return error(res, '重置失败', 500);
   }
 });
 
@@ -194,18 +241,36 @@ router.get('/profile', studentAuth, async (req, res) => {
       .get();
     const counter = counters && counters.length > 0 ? counters[0] : {};
     const quota = user.quota || config.defaultQuota;
-    const miniMaxQuota = config.defaultMiniMaxQuota;
+    const userQuota = user.quota || {};
+    const defaultMiniMaxQuota = config.defaultMiniMaxQuota;
+    const miniMaxQuota = {
+      dailyRequestLimit: Number.isFinite(Number(userQuota.minimaxDailyRequestLimit))
+        ? Number(userQuota.minimaxDailyRequestLimit)
+        : defaultMiniMaxQuota.dailyRequestLimit,
+      weeklyRequestLimit: Number.isFinite(Number(userQuota.minimaxWeeklyRequestLimit))
+        ? Number(userQuota.minimaxWeeklyRequestLimit)
+        : defaultMiniMaxQuota.weeklyRequestLimit,
+    };
+    const usage = getUsageSummary(counter);
+
+    const defaultDsQuota = getDeepSeekCostQuota();
+    const deepseekQuota = {
+      dailyCostLimitCny: Number.isFinite(Number(userQuota.deepseekDailyCostLimitCny))
+        ? Number(userQuota.deepseekDailyCostLimitCny)
+        : defaultDsQuota.dailyCostLimitCny,
+      weeklyCostLimitCny: Number.isFinite(Number(userQuota.deepseekWeeklyCostLimitCny))
+        ? Number(userQuota.deepseekWeeklyCostLimitCny)
+        : defaultDsQuota.weeklyCostLimitCny,
+    };
 
     return success(res, {
       studentId: user.studentId,
       name: user.name || '',
       apiKeyPrefix: user.apiKeyPrefix,
       quota,
-      dailyTokensUsed: counter.dailyTokens || 0,
-      weeklyTokensUsed: counter.weeklyTokens || 0,
-      minimaxDailyRequestsUsed: counter.minimaxDailyRequests || 0,
-      minimaxWeeklyRequestsUsed: counter.minimaxWeeklyRequests || 0,
+      ...usage,
       minimaxQuota: miniMaxQuota,
+      deepseekQuota,
       createdAt: user.createdAt,
     });
   } catch (err) {
@@ -217,13 +282,16 @@ router.get('/profile', studentAuth, async (req, res) => {
 // 学生自己的调用日志
 router.get('/usage', studentAuth, async (req, res) => {
   try {
-    const { model, startDate, endDate } = req.query;
+    const { model, provider, startDate, endDate } = req.query;
     const pageParams = parsePageParams(req.query, 20);
     if (pageParams.error) return error(res, pageParams.error);
     const { page, pageSize } = pageParams;
 
     if (model && String(model).length > 128) {
       return error(res, 'model 不能超过 128 个字符');
+    }
+    if (provider && !['mimo', 'minimax', 'deepseek'].includes(provider)) {
+      return error(res, 'provider 只支持 mimo / minimax / deepseek');
     }
     const start = parseDateParam(startDate, 'startDate');
     if (start.error) return error(res, start.error);
@@ -235,6 +303,7 @@ router.get('/usage', studentAuth, async (req, res) => {
 
     const conditions = [{ studentId: req.student.studentId }];
     if (model) conditions.push({ model });
+    if (provider) conditions.push({ billingProvider: provider });
     if (start.value) conditions.push({ createdAt: _.gte(start.value) });
     if (end.value) conditions.push({ createdAt: _.lte(end.value) });
     const where = conditions.length > 1 ? _.and(...conditions) : conditions[0];

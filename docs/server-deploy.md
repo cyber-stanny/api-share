@@ -29,9 +29,9 @@ JWT_SECRET=和 CloudBase 部署保持一致的随机密钥
 ADMIN_INIT_PASSWORD=管理员初始密码
 CORS_ORIGINS=https://你的域名
 PROXY_ENABLED=true
-MIMO_API_KEY=你的上游 Key
+MIMO_API_KEY=你的 MiMo Key
 MINIMAX_API_KEY=你的 MiniMax Key
-SILICONFLOW_API_KEY=
+DEEPSEEK_API_KEY=你的 DeepSeek Key
 ```
 
 `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 需要有访问对应 CloudBase 环境数据库的权限。
@@ -45,10 +45,10 @@ node scripts/init-admin.js
 node scripts/seed-upstreams.js
 ```
 
-如果你已经把 MiniMax Key 放进环境变量，并且数据库里已有 MiniMax 上游记录，可以再执行：
+如果你已经把上游 Key 放进环境变量，并且数据库里已有对应上游记录，可以再执行：
 
 ```bash
-npm run sync:minimax
+npm run sync:upstreams
 ```
 
 ## 启动服务

@@ -1,0 +1,17 @@
+:root {
+  --primary: #6B8F71;
+  --primary-light: #E8F0E9;
+  --secondary: #C47A5A;
+  --secondary-light: #F5E8E0;
+  --bg: #F7F4EE;
+  --shell: #EDE9E3;
+  --surface: #FFFFFF;
+  --text: #2D2D2D;
+  --muted: #8F8982;
+  --light-muted: #BDB6AD;
+  --border: #E8E4DE;
+  --danger: #C75B5B;
+  --mono: "JetBrains Mono", "SF Mono", monospace;
+  --serif: "Noto Serif JP", Georgia, serif;
+  --sans: "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+}

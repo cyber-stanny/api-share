@@ -1,0 +1,125 @@
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useAuthStore } from '../stores/auth';
+
+const props = defineProps<{
+  visible: boolean;
+  initialMode?: 'login' | 'register';
+}>();
+
+const emit = defineEmits<{
+  close: [];
+  success: [];
+}>();
+
+const auth = useAuthStore();
+
+const mode = ref(props.initialMode || 'login');
+const studentId = ref('');
+const password = ref('');
+const name = ref('');
+const error = ref('');
+const loading = ref(false);
+
+function switchMode(newMode: 'login' | 'register') {
+  mode.value = newMode;
+  error.value = '';
+}
+
+async function handleSubmit() {
+  error.value = '';
+  loading.value = true;
+  try {
+    if (mode.value === 'register') {
+      await auth.register(studentId.value, password.value, name.value);
+      emit('success');
+      emit('close');
+    } else {
+      await auth.login(studentId.value, password.value);
+      emit('success');
+      emit('close');
+    }
+  } catch (e: any) {
+    error.value = e.message || '操作失败';
+  } finally {
+    loading.value = false;
+  }
+}
+</script>
+
+<template>
+  <Teleport to="body">
+    <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
+      <div class="panel auth-panel">
+        <h2 class="panel-title">{{ mode === 'login' ? '登录' : '注册' }}</h2>
+        <p class="panel-sub">
+          {{ mode === 'login' ? '输入学号和密码进入学生控制台。' : '使用白名单学号注册，领取专属 API Key。' }}
+        </p>
+        <div class="tabs">
+          <button
+            class="tab"
+            :class="{ active: mode === 'login' }"
+            @click="switchMode('login')"
+          >
+            登录
+          </button>
+          <button
+            class="tab"
+            :class="{ active: mode === 'register' }"
+            @click="switchMode('register')"
+          >
+            注册
+          </button>
+        </div>
+        <div v-if="error" class="message err">{{ error }}</div>
+        <div class="field">
+          <label>学号</label>
+          <input v-model="studentId" class="input" placeholder="2024010001" />
+        </div>
+        <div v-if="mode === 'register'" class="field">
+          <label>姓名</label>
+          <input v-model="name" class="input" placeholder="张同学" />
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input v-model="password" type="password" class="input" placeholder="至少 6 位" />
+        </div>
+        <div class="form-actions">
+          <button class="btn primary" :disabled="loading" @click="handleSubmit">
+            {{ mode === 'login' ? '登录' : '注册并领取 Key' }}
+          </button>
+          <span v-if="mode === 'register'" style="font-size:11px;color:var(--light-muted)">仅白名单学号可注册</span>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+</template>
+
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(45,45,45,.3);
+  z-index: 40;
+}
+.auth-panel {
+  width: min(480px, 100%);
+  padding: 28px;
+}
+.panel-title {
+  font: 700 24px var(--serif);
+  margin: 0 0 5px;
+}
+.panel-sub { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab {
+  border: 0; background: transparent; padding: 10px 0;
+  color: var(--muted); border-bottom: 2px solid transparent;
+  font-weight: 600; cursor: pointer;
+}
+.tab.active { color: var(--primary); border-color: var(--primary); }
+.form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
+</style>

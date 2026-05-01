@@ -1,19 +1,78 @@
 const express = require('express');
 const { apiKeyAuth } = require('../middleware/auth');
 const { findUpstream, getAvailableModelDetails } = require('../services/upstream');
-const { checkQuota, addTokens, checkMiniMaxQuota, addMiniMaxRequests } = require('../services/quota');
+const { addTokenUsage, checkTokenQuota, checkDeepSeekCostQuota, checkMiniMaxQuota, addMiniMaxRequests } = require('../services/quota');
 const { checkRateLimit, acquireConcurrent, releaseConcurrent } = require('../services/rateLimit');
-const { acquireUpstreamSlot, isMiniMaxUpstream } = require('../services/upstreamLimiter');
+const { acquireUpstreamSlot } = require('../services/upstreamLimiter');
 const { recordUsage } = require('../services/usage');
-const { getMiniMaxRequestUnits } = require('../services/modelCatalog');
+const { createBillingContext, finalizeBilling } = require('../services/billing');
 
 const router = express.Router();
 
-async function persistUsageAndTokens({ studentId, model, upstreamId, usage, status, billingType, billingUnits }) {
-  await recordUsage({ studentId, model, upstreamId, usage, status, billingType, billingUnits });
-  if (billingType === 'tokens' && usage?.total_tokens) {
+function toUsageNumber(value) {
+  const n = Number(value || 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function normalizeOpenAIUsage(usage) {
+  if (!usage) return null;
+  const promptTokens = toUsageNumber(usage.prompt_tokens);
+  const completionTokens = toUsageNumber(usage.completion_tokens);
+  const totalTokens = toUsageNumber(usage.total_tokens) || promptTokens + completionTokens;
+  const cacheHitTokens = toUsageNumber(
+    usage.prompt_cache_hit_tokens
+    ?? usage.prompt_tokens_details?.cached_tokens
+    ?? usage.cached_prompt_tokens
+  );
+  const explicitCacheMissTokens = toUsageNumber(usage.prompt_cache_miss_tokens);
+
+  return {
+    ...usage,
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+    total_tokens: totalTokens,
+    cached_prompt_tokens: cacheHitTokens,
+    prompt_cache_hit_tokens: cacheHitTokens,
+    prompt_cache_miss_tokens: explicitCacheMissTokens || Math.max(0, promptTokens - cacheHitTokens),
+  };
+}
+
+function normalizeAnthropicUsage(usage) {
+  if (!usage) return null;
+  const cacheCreationInputTokens = toUsageNumber(usage.cache_creation_input_tokens);
+  const cacheReadInputTokens = toUsageNumber(usage.cache_read_input_tokens);
+  const inputTokens = toUsageNumber(usage.input_tokens) + cacheCreationInputTokens + cacheReadInputTokens;
+  const outputTokens = toUsageNumber(usage.output_tokens);
+
+  return {
+    prompt_tokens: inputTokens,
+    completion_tokens: outputTokens,
+    total_tokens: inputTokens + outputTokens,
+    cached_prompt_tokens: cacheReadInputTokens,
+    prompt_cache_hit_tokens: cacheReadInputTokens,
+    prompt_cache_miss_tokens: Math.max(0, inputTokens - cacheReadInputTokens),
+  };
+}
+
+async function persistUsageAndBilling({
+  studentId,
+  model,
+  billingModel,
+  upstreamId,
+  usage,
+  status,
+  billingContext,
+}) {
+  const billing = finalizeBilling(billingContext, billingModel || model, usage);
+  await recordUsage({ studentId, model, upstreamId, usage, status, ...billing });
+  if (billing.billingType === 'tokens' && (billing.billingUnits > 0 || billing.billingCostMicroCny > 0)) {
     try {
-      await addTokens(studentId, usage.total_tokens);
+      await addTokenUsage(
+        studentId,
+        billing.billingProvider,
+        billing.billingUnits,
+        billing.billingCostMicroCny
+      );
     } catch (err) {
       err.usageRecorded = true;
       throw err;
@@ -34,12 +93,8 @@ const PROTOCOLS = {
     errorMsg: (msg) => ({ error: { message: msg, type: 'api_error' } }),
     invalidRequestMsg: (msg) => ({ error: { message: msg, type: 'invalid_request_error' } }),
     rateLimitMsg: (msg) => ({ error: { message: msg, type: 'rate_limit_error' } }),
-    createStreamUsageParser: () => (data) => data.usage ? {
-      prompt_tokens: data.usage.prompt_tokens || 0,
-      completion_tokens: data.usage.completion_tokens || 0,
-      total_tokens: data.usage.total_tokens || 0,
-    } : null,
-    parseNonStreamUsage: (data) => data.usage || null,
+    createStreamUsageParser: () => (data) => normalizeOpenAIUsage(data.usage),
+    parseNonStreamUsage: (data) => normalizeOpenAIUsage(data.usage),
   },
   anthropic: {
     path: '/v1/messages',
@@ -52,22 +107,27 @@ const PROTOCOLS = {
     createStreamUsageParser: () => {
       let inputTokens = 0;
       let outputTokens = 0;
+      let cacheCreationInputTokens = 0;
+      let cacheReadInputTokens = 0;
       return (data) => {
         if (data.type === 'message_start' && data.message?.usage) {
           inputTokens = data.message.usage.input_tokens || 0;
+          cacheCreationInputTokens = data.message.usage.cache_creation_input_tokens || 0;
+          cacheReadInputTokens = data.message.usage.cache_read_input_tokens || 0;
         }
         if (data.type === 'message_delta' && data.usage) {
           outputTokens = data.usage.output_tokens || 0;
         }
-        const total = inputTokens + outputTokens;
-        return total > 0 ? { prompt_tokens: inputTokens, completion_tokens: outputTokens, total_tokens: total } : null;
+        const usage = normalizeAnthropicUsage({
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          cache_creation_input_tokens: cacheCreationInputTokens,
+          cache_read_input_tokens: cacheReadInputTokens,
+        });
+        return usage?.total_tokens > 0 ? usage : null;
       };
     },
-    parseNonStreamUsage: (data) => data.usage ? {
-      prompt_tokens: data.usage.input_tokens,
-      completion_tokens: data.usage.output_tokens,
-      total_tokens: (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0),
-    } : null,
+    parseNonStreamUsage: (data) => normalizeAnthropicUsage(data.usage),
   },
 };
 
@@ -107,8 +167,7 @@ async function handleProxy(req, res, protocol) {
   let upstream;
   let upstreamSlot = null;
   let released = false;
-  let billingType = 'tokens';
-  let billingUnits = 0;
+  let billingContext = null;
   const releaseOnce = () => {
     if (released) return;
     released = true;
@@ -121,16 +180,17 @@ async function handleProxy(req, res, protocol) {
       return res.status(404).json(proto.invalidRequestMsg(`模型 ${model} 不可用`));
     }
 
-    if (isMiniMaxUpstream(upstream)) {
-      billingType = 'requests';
-      billingUnits = getMiniMaxRequestUnits(model) || 1;
-      const quotaResult = await checkMiniMaxQuota(req.student.studentId, billingUnits);
+    billingContext = createBillingContext(upstream, model);
+    if (billingContext.billingType === 'requests') {
+      const quotaResult = await checkMiniMaxQuota(req.student.studentId, billingContext.billingUnits);
       if (!quotaResult.allowed) {
         res.set('Retry-After', '86400');
         return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
       }
     } else {
-      const quotaResult = await checkQuota(req.student.studentId);
+      const quotaResult = billingContext.billingProvider === 'deepseek'
+        ? await checkDeepSeekCostQuota(req.student.studentId)
+        : await checkTokenQuota(req.student.studentId, billingContext.billingProvider);
       if (!quotaResult.allowed) {
         res.set('Retry-After', '86400');
         return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
@@ -142,8 +202,8 @@ async function handleProxy(req, res, protocol) {
       return res.status(429).json(proto.rateLimitMsg(upstreamSlot.reason || '上游繁忙，请稍后再试'));
     }
 
-    if (isMiniMaxUpstream(upstream)) {
-      await addMiniMaxRequests(req.student.studentId, billingUnits);
+    if (billingContext.billingType === 'requests') {
+      await addMiniMaxRequests(req.student.studentId, billingContext.billingUnits);
     }
 
     const requestBody = proto.prepareBody({ ...req.body }, stream);
@@ -171,14 +231,14 @@ async function handleProxy(req, res, protocol) {
         errBody = proto.errorMsg('上游返回错误');
       }
 
-      await persistUsageAndTokens({
+      await persistUsageAndBilling({
         studentId: req.student.studentId,
         model,
+        billingModel: model,
         upstreamId: upstream._id,
         usage: null,
         status: upstreamRes.status,
-        billingType,
-        billingUnits,
+        billingContext,
       });
 
       return res.status(upstreamRes.status).json(errBody);
@@ -242,14 +302,14 @@ async function handleProxy(req, res, protocol) {
         }
 
         try {
-          await persistUsageAndTokens({
+          await persistUsageAndBilling({
             studentId: req.student.studentId,
             model,
+            billingModel: model,
             upstreamId: upstream._id,
             usage: capturedUsage,
             status: streamStatus,
-            billingType,
-            billingUnits,
+            billingContext,
           });
         } catch (err) {
           console.error('Failed to persist streaming usage:', {
@@ -269,14 +329,14 @@ async function handleProxy(req, res, protocol) {
     const data = await upstreamRes.json();
     const usage = proto.parseNonStreamUsage(data);
 
-    await persistUsageAndTokens({
+    await persistUsageAndBilling({
         studentId: req.student.studentId,
         model: data.model || model,
+        billingModel: model,
         upstreamId: upstream._id,
         usage,
         status: upstreamRes.status,
-        billingType,
-        billingUnits,
+        billingContext,
       });
 
     return res.status(upstreamRes.status).json(data);
@@ -285,14 +345,14 @@ async function handleProxy(req, res, protocol) {
 
     if (!err.usageRecorded) {
       try {
+        const billing = finalizeBilling(billingContext, model, null);
         await recordUsage({
           studentId: req.student.studentId,
           model,
           upstreamId: upstream?._id,
           usage: null,
           status: 502,
-          billingType,
-          billingUnits,
+          ...billing,
         });
       } catch (usageErr) {
         console.error('Failed to record proxy error usage:', usageErr);

@@ -17,12 +17,21 @@ function isMiniMaxUpstream(upstream) {
   return name.includes('minimax') || baseUrl.includes('minimaxi.com');
 }
 
+function isDeepSeekUpstream(upstream) {
+  const name = String(upstream?.name || '').toLowerCase();
+  const baseUrl = String(upstream?.baseUrl || '').toLowerCase();
+  return name.includes('deepseek') || baseUrl.includes('deepseek.com');
+}
+
 function getLimitProfile(upstream) {
   if (isMimoUpstream(upstream)) {
     return { key: 'mimo', ...config.upstreamLimits.mimo };
   }
   if (isMiniMaxUpstream(upstream)) {
     return { key: 'minimax', ...config.upstreamLimits.minimax };
+  }
+  if (isDeepSeekUpstream(upstream)) {
+    return { key: 'deepseek', ...config.upstreamLimits.deepseek };
   }
   return null;
 }
@@ -232,4 +241,10 @@ setInterval(() => {
   }
 }, DAY_MS).unref?.();
 
-module.exports = { acquireUpstreamSlot, isMimoUpstream, isMiniMaxUpstream, getUpstreamLimiterMetrics };
+module.exports = {
+  acquireUpstreamSlot,
+  isMimoUpstream,
+  isMiniMaxUpstream,
+  isDeepSeekUpstream,
+  getUpstreamLimiterMetrics,
+};

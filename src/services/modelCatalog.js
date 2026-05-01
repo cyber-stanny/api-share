@@ -19,6 +19,24 @@ const MINIMAX_MODELS = [
   'MiniMax-M2',
 ];
 
+const DEEPSEEK_MODELS = [
+  'deepseek-v4-flash',
+  'deepseek-v4-pro',
+];
+
+const DEEPSEEK_PRICING_PER_MILLION_CNY = {
+  'deepseek-v4-flash': {
+    inputCacheHit: 0.02,
+    inputCacheMiss: 1,
+    output: 2,
+  },
+  'deepseek-v4-pro': {
+    inputCacheHit: 0.025,
+    inputCacheMiss: 3,
+    output: 6,
+  },
+};
+
 const MODEL_METADATA = [
   { id: 'MiniMax-M2.7', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'MiniMax-M2.7-highspeed', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
@@ -34,6 +52,8 @@ const MODEL_METADATA = [
   { id: 'mimo-v2.5-tts', provider: 'MiMo Token Plan', protocols: ['openai'] },
   { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-flash', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-pro', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
 ];
 
 const NON_TEXT_MODELS = new Set([
@@ -94,7 +114,30 @@ const MIMO_UPSTREAMS = [
   },
 ];
 
-const UPSTREAM_PRESETS = [...MINIMAX_UPSTREAMS, ...MIMO_UPSTREAMS];
+const DEEPSEEK_UPSTREAMS = [
+  {
+    name: 'DeepSeek (OpenAI)',
+    provider: 'DeepSeek Token Plan',
+    baseUrl: 'https://api.deepseek.com',
+    apiKeyEnv: 'DEEPSEEK_API_KEY',
+    models: DEEPSEEK_MODELS,
+    protocol: 'openai',
+    enabled: true,
+    priority: 15,
+  },
+  {
+    name: 'DeepSeek (Anthropic)',
+    provider: 'DeepSeek Token Plan',
+    baseUrl: 'https://api.deepseek.com/anthropic',
+    apiKeyEnv: 'DEEPSEEK_API_KEY',
+    models: DEEPSEEK_MODELS,
+    protocol: 'anthropic',
+    enabled: true,
+    priority: 15,
+  },
+];
+
+const UPSTREAM_PRESETS = [...MINIMAX_UPSTREAMS, ...MIMO_UPSTREAMS, ...DEEPSEEK_UPSTREAMS];
 
 const MODEL_ORDER = MODEL_METADATA.map(model => model.id);
 
@@ -111,15 +154,28 @@ function getMiniMaxRequestUnits(modelId) {
   return 1;
 }
 
+function getMimoTokenMultiplier(modelId) {
+  return modelId === 'mimo-v2.5' ? 2 : 1;
+}
+
+function getDeepSeekPricing(modelId) {
+  return DEEPSEEK_PRICING_PER_MILLION_CNY[modelId] || null;
+}
+
 module.exports = {
   MIMO_MODELS,
   MINIMAX_MODELS,
+  DEEPSEEK_MODELS,
+  DEEPSEEK_PRICING_PER_MILLION_CNY,
   MODEL_METADATA,
   MODEL_ORDER,
   MIMO_UPSTREAMS,
   MINIMAX_UPSTREAMS,
+  DEEPSEEK_UPSTREAMS,
   UPSTREAM_PRESETS,
   getModelMetadata,
   getMiniMaxRequestUnits,
+  getMimoTokenMultiplier,
+  getDeepSeekPricing,
   isTextModelSupported,
 };

@@ -10,6 +10,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Build frontend first
+npm run build:frontend
+
 cp -R "$ROOT_DIR/src/." "$STAGE_DIR/"
 cp "$ROOT_DIR/package.json" "$ROOT_DIR/package-lock.json" "$STAGE_DIR/"
 
@@ -45,8 +48,9 @@ for (const fn of cfg.functions || []) {
     ADMIN_INIT_PASSWORD: value('ADMIN_INIT_PASSWORD'),
     CORS_ORIGINS: value('CORS_ORIGINS', '*'),
     PROXY_ENABLED: value('PROXY_ENABLED', 'true'),
-    SILICONFLOW_API_KEY: value('SILICONFLOW_API_KEY'),
     MIMO_API_KEY: value('MIMO_API_KEY'),
+    MINIMAX_API_KEY: value('MINIMAX_API_KEY'),
+    DEEPSEEK_API_KEY: value('DEEPSEEK_API_KEY'),
   };
 }
 

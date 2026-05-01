@@ -5,3 +5,10 @@ node_modules/
 *.log
 .DS_Store
 test/
+
+# Frontend build artifacts (Vite output)
+src/public/index.html
+src/public/admin.html
+src/public/assets/
+frontend/node_modules/
+frontend/dist/

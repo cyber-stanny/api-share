@@ -7,6 +7,7 @@ const { adminAuth } = require('../middleware/adminAuth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getUpstreamLimiterMetrics } = require('../services/upstreamLimiter');
+const { getUsageSummary } = require('../services/quota');
 const router = express.Router();
 
 const adminLoginLimiter = createRateLimiter({
@@ -107,6 +108,7 @@ router.get('/students', adminAuth, async (req, res) => {
         .get();
 
       const counter = counters && counters.length > 0 ? counters[0] : null;
+      const usage = getUsageSummary(counter || {});
 
       return {
         _id: s._id,
@@ -114,10 +116,23 @@ router.get('/students', adminAuth, async (req, res) => {
         name: s.name,
         apiKeyPrefix: s.apiKeyPrefix,
         quota: s.quota,
-        dailyTokensUsed: counter?.dailyTokens || 0,
-        weeklyTokensUsed: counter?.weeklyTokens || 0,
-        minimaxDailyRequestsUsed: counter?.minimaxDailyRequests || 0,
-        minimaxWeeklyRequestsUsed: counter?.minimaxWeeklyRequests || 0,
+        ...usage,
+        deepseekQuota: {
+          dailyCostLimitCny: Number.isFinite(Number(s.quota?.deepseekDailyCostLimitCny))
+            ? Number(s.quota.deepseekDailyCostLimitCny)
+            : config.defaultDeepSeekQuota.dailyCostLimitCny,
+          weeklyCostLimitCny: Number.isFinite(Number(s.quota?.deepseekWeeklyCostLimitCny))
+            ? Number(s.quota.deepseekWeeklyCostLimitCny)
+            : config.defaultDeepSeekQuota.weeklyCostLimitCny,
+        },
+        minimaxQuota: {
+          dailyRequestLimit: Number.isFinite(Number(s.quota?.minimaxDailyRequestLimit))
+            ? Number(s.quota.minimaxDailyRequestLimit)
+            : config.defaultMiniMaxQuota.dailyRequestLimit,
+          weeklyRequestLimit: Number.isFinite(Number(s.quota?.minimaxWeeklyRequestLimit))
+            ? Number(s.quota.minimaxWeeklyRequestLimit)
+            : config.defaultMiniMaxQuota.weeklyRequestLimit,
+        },
         createdAt: s.createdAt,
       };
     }));
@@ -129,10 +144,10 @@ router.get('/students', adminAuth, async (req, res) => {
   }
 });
 
-// 调整学生额度（按 token）
+// 调整学生额度
 router.put('/students/:id/quota', adminAuth, async (req, res) => {
   try {
-    const { dailyTokenLimit, weeklyTokenLimit } = req.body;
+    const { dailyTokenLimit, weeklyTokenLimit, deepseekDailyCostLimitCny, deepseekWeeklyCostLimitCny, minimaxDailyRequestLimit, minimaxWeeklyRequestLimit } = req.body;
     const update = {};
     let nextDailyLimit;
     let nextWeeklyLimit;
@@ -148,6 +163,26 @@ router.put('/students/:id/quota', adminAuth, async (req, res) => {
       if (parsed.error) return error(res, parsed.error);
       nextWeeklyLimit = parsed.value;
       update['quota.weeklyTokenLimit'] = nextWeeklyLimit;
+    }
+    if (deepseekDailyCostLimitCny !== undefined) {
+      const val = Number(deepseekDailyCostLimitCny);
+      if (!Number.isFinite(val) || val < 0) return error(res, 'deepseekDailyCostLimitCny 必须是非负数');
+      update['quota.deepseekDailyCostLimitCny'] = val;
+    }
+    if (deepseekWeeklyCostLimitCny !== undefined) {
+      const val = Number(deepseekWeeklyCostLimitCny);
+      if (!Number.isFinite(val) || val < 0) return error(res, 'deepseekWeeklyCostLimitCny 必须是非负数');
+      update['quota.deepseekWeeklyCostLimitCny'] = val;
+    }
+    if (minimaxDailyRequestLimit !== undefined) {
+      const parsed = parseTokenLimit(minimaxDailyRequestLimit, 'minimaxDailyRequestLimit');
+      if (parsed.error) return error(res, parsed.error);
+      update['quota.minimaxDailyRequestLimit'] = parsed.value;
+    }
+    if (minimaxWeeklyRequestLimit !== undefined) {
+      const parsed = parseTokenLimit(minimaxWeeklyRequestLimit, 'minimaxWeeklyRequestLimit');
+      if (parsed.error) return error(res, parsed.error);
+      update['quota.minimaxWeeklyRequestLimit'] = parsed.value;
     }
 
     if (Object.keys(update).length === 0) {
@@ -172,6 +207,30 @@ router.put('/students/:id/quota', adminAuth, async (req, res) => {
   } catch (err) {
     console.error('Update quota error:', err);
     return error(res, '更新失败', 500);
+  }
+});
+
+// 管理员重置学生密码
+router.put('/students/:id/reset-password', adminAuth, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      return error(res, '新密码至少 6 位');
+    }
+
+    const { data: users } = await db.collection('users').doc(req.params.id).get();
+    const user = Array.isArray(users) ? users[0] : users;
+    if (!user) {
+      return error(res, '学生不存在', 404);
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await db.collection('users').doc(req.params.id).update({ passwordHash });
+
+    return success(res, { message: '密码已重置' });
+  } catch (err) {
+    console.error('Admin reset password error:', err);
+    return error(res, '重置失败', 500);
   }
 });
 

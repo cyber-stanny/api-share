@@ -16,7 +16,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install && npm install --prefix frontend
 
       - name: Install CloudBase CLI
         run: npm install -g @cloudbase/cli

@@ -32,6 +32,12 @@ const config = {
       queueTimeoutMs: parseInt(process.env.UPSTREAM_MINIMAX_QUEUE_TIMEOUT_MS || process.env.UPSTREAM_MIMO_QUEUE_TIMEOUT_MS || '30000', 10),
       rpm: parseInt(process.env.UPSTREAM_MINIMAX_RPM || process.env.UPSTREAM_MIMO_RPM || '80', 10),
     },
+    deepseek: {
+      maxConcurrent: parseInt(process.env.UPSTREAM_DEEPSEEK_MAX_CONCURRENT || process.env.UPSTREAM_MIMO_MAX_CONCURRENT || '8', 10),
+      maxQueue: parseInt(process.env.UPSTREAM_DEEPSEEK_MAX_QUEUE || process.env.UPSTREAM_MIMO_MAX_QUEUE || '10', 10),
+      queueTimeoutMs: parseInt(process.env.UPSTREAM_DEEPSEEK_QUEUE_TIMEOUT_MS || process.env.UPSTREAM_MIMO_QUEUE_TIMEOUT_MS || '30000', 10),
+      rpm: parseInt(process.env.UPSTREAM_DEEPSEEK_RPM || process.env.UPSTREAM_MIMO_RPM || '80', 10),
+    },
   },
 
   proxy: {
@@ -42,6 +48,12 @@ const config = {
   defaultQuota: {
     dailyTokenLimit: 500000,    // 每日 50 万 token
     weeklyTokenLimit: 2000000,  // 每周 200 万 token
+  },
+
+  // DeepSeek 默认额度（按人民币金额计算）
+  defaultDeepSeekQuota: {
+    dailyCostLimitCny: parseFloat(process.env.DEEPSEEK_DAILY_COST_LIMIT_CNY || '5'),
+    weeklyCostLimitCny: parseFloat(process.env.DEEPSEEK_WEEKLY_COST_LIMIT_CNY || '20'),
   },
 
   // MiniMax 默认额度（按调用次数计算）

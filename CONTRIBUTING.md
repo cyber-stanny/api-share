@@ -47,6 +47,7 @@ API Share 是一个大模型 API 中转平台，面向学生用户提供：
 - 按 `PROXY_ENABLED` 控制是否开放 `/v1/*`
 
 如果 `PROXY_ENABLED=false`，系统仍然可以做注册、登录、管理和发放 Key，但代理接口会直接返回 `503`。
+也就是说中转的这个接口的所在的服务可以跟管理页面端分开部署。
 
 ### 2. 认证体系
 
@@ -191,7 +192,9 @@ MiniMax 的特殊点：
 ```bash
 cp .env.example .env
 npm install
-npm start
+npm install --prefix frontend
+npm start              # 后端：localhost:3000
+npm run dev:frontend  # 前端：localhost:5173（热重载）
 ```
 
 常见验证路径：
@@ -201,6 +204,21 @@ npm start
 - 检查 `/api/auth/login`
 - 检查 `/api/admin/login`
 - 检查 `/v1/models`
+
+### 前端目录约定
+
+前端源码在 `frontend/`：
+
+- `frontend/src/shared/` — 两端共用（API 封装、类型、格式化、CSS 组件）
+- `frontend/src/student/` — 学生端视图和组件
+- `frontend/src/admin/` — 管理端视图和组件
+
+添加新页面：
+1. 在对应端的 `views/` 下创建 `.vue` 文件
+2. 在 `router.ts` 中添加路由
+3. 组件放在 `components/`
+
+前端构建：`npm run build:frontend` 输出到 `src/public/`
 
 ## 部署提示
 

@@ -3,7 +3,18 @@ const { db } = require('../db');
 const RETENTION_DAYS = 3;
 
 // 异步记录调用日志（不阻塞响应）
-async function recordUsage({ studentId, model, upstreamId, usage, status, billingType = 'tokens', billingUnits = 0 }) {
+async function recordUsage({
+  studentId,
+  model,
+  upstreamId,
+  usage,
+  status,
+  billingType = 'tokens',
+  billingProvider = null,
+  billingUnits = 0,
+  billingCostMicroCny = 0,
+  billingCostCny = 0,
+}) {
   try {
     await db.collection('usage_records').add({
       studentId,
@@ -12,8 +23,13 @@ async function recordUsage({ studentId, model, upstreamId, usage, status, billin
       promptTokens: usage?.prompt_tokens || 0,
       completionTokens: usage?.completion_tokens || 0,
       totalTokens: usage?.total_tokens || 0,
+      promptCacheHitTokens: usage?.cached_prompt_tokens || usage?.prompt_cache_hit_tokens || 0,
+      promptCacheMissTokens: usage?.prompt_cache_miss_tokens || 0,
+      billingProvider,
       billingType,
       billingUnits,
+      billingCostMicroCny,
+      billingCostCny: billingCostCny || (billingCostMicroCny ? billingCostMicroCny / 1000000 : 0),
       status,
       createdAt: new Date(),
     });

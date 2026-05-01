@@ -34,9 +34,9 @@ npm audit fix
 
 ## 异常处理
 
-## MiMo / MiniMax Token Plan 容量观察
+## MiMo / MiniMax / DeepSeek Token Plan 容量观察
 
-当前 MiMo / MiniMax 上游保护默认值：
+当前 MiMo / MiniMax / DeepSeek 上游保护默认值：
 
 - 并发：`UPSTREAM_MIMO_MAX_CONCURRENT=8`
 - 队列：`UPSTREAM_MIMO_MAX_QUEUE=10`
@@ -47,6 +47,11 @@ npm audit fix
   - `UPSTREAM_MINIMAX_MAX_QUEUE=10`
   - `UPSTREAM_MINIMAX_QUEUE_TIMEOUT_MS=30000`
   - `UPSTREAM_MINIMAX_RPM=80`
+- DeepSeek 默认使用同一组限制参数，若需要单独调节可改：
+  - `UPSTREAM_DEEPSEEK_MAX_CONCURRENT=8`
+  - `UPSTREAM_DEEPSEEK_MAX_QUEUE=10`
+  - `UPSTREAM_DEEPSEEK_QUEUE_TIMEOUT_MS=30000`
+  - `UPSTREAM_DEEPSEEK_RPM=80`
 
 查看当前实例内存指标：
 
