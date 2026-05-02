@@ -17,7 +17,7 @@ API Share 是一个大模型 API 中转平台，面向学生用户提供：
 
 - MiMo Token Plan
 - MiniMax Token Plan
-- 硅基流动
+- DeepSeek Token Plan
 
 ## 核心架构
 
@@ -213,10 +213,18 @@ npm run dev:frontend  # 前端：localhost:5173（热重载）
 - `frontend/src/student/` — 学生端视图和组件
 - `frontend/src/admin/` — 管理端视图和组件
 
-添加新页面：
-1. 在对应端的 `views/` 下创建 `.vue` 文件
-2. 在 `router.ts` 中添加路由
-3. 组件放在 `components/`
+添加学生端页面：
+1. 在 `frontend/src/student/views/` 下创建 `.vue` 文件
+2. 在 `frontend/src/student/router.ts` 中添加 hash 路由
+3. 如果需要顶部入口，同步更新 `frontend/src/student/App.vue` 的导航项
+
+添加管理 tab：
+1. 在 `frontend/src/admin/views/` 下创建页面，例如 `Statistics.vue`
+2. 页面私有的小组件放在 `frontend/src/admin/components/`
+3. 在 `frontend/src/admin/router.ts` 中添加路由，例如 `{ path: '/stats', component: Statistics }`
+4. 在 `frontend/src/admin/components/Sidebar.vue` 的 `navItems` 增加 `{ path: '/stats', label: '统计' }`
+5. 受保护页面默认会经过 `router.beforeEach` 登录态检查，只有登录页应放在 `/login`
+6. 两端通用类型、格式化和 API 请求逻辑放到 `frontend/src/shared/`，不要复制到 student/admin 目录里
 
 前端构建：`npm run build:frontend` 输出到 `src/public/`
 

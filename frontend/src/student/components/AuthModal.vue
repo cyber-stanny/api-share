@@ -9,7 +9,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: [];
-  success: [];
+  success: [apiKey?: string];
 }>();
 
 const auth = useAuthStore();
@@ -48,8 +48,8 @@ async function handleSubmit() {
   loading.value = true;
   try {
     if (mode.value === 'register') {
-      await auth.register(studentId.value, password.value, name.value);
-      emit('success');
+      const apiKey = await auth.register(studentId.value, password.value, name.value);
+      emit('success', apiKey);
       emit('close');
     } else if (mode.value === 'reset') {
       await auth.resetPassword(studentId.value, name.value, password.value);

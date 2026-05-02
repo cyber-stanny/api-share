@@ -41,7 +41,7 @@ npm start
 npm run dev:frontend
 ```
 
-前端开发服务器会自动代理 `/api`, `/v1`, `/admin` 到 `localhost:3000`。
+前端开发服务器会自动代理 `/api`, `/v1` 到 `localhost:3000`。学生端打开 `http://localhost:5173/`，管理端打开 `http://localhost:5173/admin.html`。
 
 ## 构建
 
@@ -53,9 +53,18 @@ npm run build:frontend
 
 ## 添加新页面
 
-1. 在 `views/` 下创建 `.vue` 文件
-2. 在 `router.ts` 中添加路由
-3. 组件放在 `components/`
+学生端：
+
+1. 在 `frontend/src/student/views/` 下创建 `.vue` 文件
+2. 在 `frontend/src/student/router.ts` 中添加 hash 路由
+3. 如需顶部导航，同步更新 `frontend/src/student/App.vue` 的 `navItems`
+
+管理端：
+
+1. 在 `frontend/src/admin/views/` 下创建 `.vue` 文件
+2. 页面私有组件放在 `frontend/src/admin/components/`
+3. 在 `frontend/src/admin/router.ts` 中添加 hash 路由
+4. 如需侧边栏入口，同步更新 `frontend/src/admin/components/Sidebar.vue`
 
 例：在管理端添加新的 tab 页面 `Statistics.vue`
 
@@ -63,6 +72,16 @@ npm run build:frontend
 // admin/router.ts
 import Statistics from './views/Statistics.vue'
 // 添加路由: { path: '/stats', component: Statistics }
+```
+
+```typescript
+// admin/components/Sidebar.vue
+const navItems = [
+  { path: '/students', label: '学生管理' },
+  { path: '/whitelist', label: '白名单' },
+  { path: '/usage', label: '调用日志' },
+  { path: '/stats', label: '统计' },
+]
 ```
 
 ## API 封装

@@ -1,6 +1,6 @@
 export function getMountPath(): string {
   const firstSegment = window.location.pathname.split('/').filter(Boolean)[0] || '';
-  const appRoutes = new Set(['admin', 'api', 'health', 'v1']);
+  const appRoutes = new Set(['admin', 'admin.html', 'index.html', 'api', 'health', 'v1', 'assets']);
   return firstSegment && !appRoutes.has(firstSegment) ? `/${firstSegment}` : '';
 }
 

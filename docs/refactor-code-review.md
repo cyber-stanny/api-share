@@ -146,6 +146,90 @@
 - Verification:
   - Frontend production build passed after the change.
 
+### 9. Deploy workflow did not strictly follow lockfiles and carried a stale secret
+
+- Status: fixed
+- Severity: medium
+- Found during: phase 4 deployment-chain review of `.github/workflows/deploy.yml`
+- Symptom:
+  - GitHub Actions installed dependencies with `npm install`, so CI could drift from `package-lock.json` and `frontend/package-lock.json`.
+  - The deploy environment still passed `SILICONFLOW_API_KEY`, while current deployment config and model catalog use `MIMO_API_KEY`, `MINIMAX_API_KEY`, and `DEEPSEEK_API_KEY`.
+- Root cause:
+  - The workflow was not updated fully after the frontend/package-lock split and provider migration.
+- Fix:
+  - Changed dependency installation to `npm ci && npm --prefix frontend ci`.
+  - Removed `SILICONFLOW_API_KEY` and passed the current optional provider/deploy variables.
+- Verification:
+  - Static review confirmed `npm run deploy` calls `scripts/deploy-cloudbase.sh`, and that script runs `npm run build:frontend` before staging `src/`.
+
+### 10. Frontend build artifacts had an ambiguous git boundary
+
+- Status: fixed
+- Severity: medium
+- Found during: phase 4 review of `.gitignore`, `src/public/`, and the deploy script
+- Symptom:
+  - `src/public/index.html` and `src/public/admin.html` were listed in `.gitignore` but still tracked by Git.
+  - Running a frontend build dirtied tracked HTML files that reference ignored hashed assets, making it easy to commit stale entry HTML without the matching assets.
+- Root cause:
+  - Vite output moved to `src/public/`, but the generated HTML files had not been removed from the index.
+- Fix:
+  - Kept `src/public/index.html`, `src/public/admin.html`, and `src/public/assets/` as ignored generated output.
+  - Added deploy-script checks that fail before CloudBase deploy if the build did not produce both HTML entries and assets.
+- Verification:
+  - `scripts/deploy-cloudbase.sh` now builds first, verifies the generated entries/assets, then copies `src/` into the staging directory.
+
+### 11. Contributor docs had stale frontend development guidance
+
+- Status: fixed
+- Severity: low
+- Found during: phase 5 documentation review
+- Symptom:
+  - `CLAUDE.md`, `DEVELOPMENT.md`, and `frontend/README.md` still said the Vite dev server proxied `/admin`.
+  - The admin-page howto did not mention the sidebar entry required for a visible tab.
+- Root cause:
+  - The docs were partially updated for the Vite/Vue split but still reflected older dev-server assumptions.
+- Fix:
+  - Updated docs to describe Express + `frontend/` Vite/Vue architecture, true commands, dev/prod admin entry paths, and the `/api` + `/v1` proxy behavior.
+  - Added a concrete “add a management tab” checklist covering `views/`, `router.ts`, `Sidebar.vue`, and shared-code placement.
+- Verification:
+  - Documentation commands were checked against root `package.json` and `frontend/package.json`.
+
+### 12. Student registration dropped the one-time API Key
+
+- Status: fixed
+- Severity: high
+- Found during: phase 5 registration-flow review
+- Symptom:
+  - `POST /api/auth/register` returns the plaintext API Key exactly once.
+  - The SPA registration modal called `auth.register(...)` but discarded the returned key.
+  - After registration, the landing page attempted to navigate to `/overview`, but registration does not create a login token, so the route guard returned the user to landing without ever showing the key.
+- Root cause:
+  - The refactored `AuthModal` success event had no payload, and `Landing.vue` did not mount `KeyModal`.
+- Fix:
+  - `AuthModal` now emits the returned API Key on registration success.
+  - `Landing.vue` opens `KeyModal` with that key instead of trying to enter the authenticated dashboard.
+- Verification:
+  - Browser registration validation passed with disposable whitelist record `review-reg-1777684344389`.
+  - The API Key modal appeared and displayed a plaintext key beginning with `sk-`.
+  - The temporary whitelist record was deleted after validation.
+
+### 13. Direct `/admin.html` entry broke API mount-path detection
+
+- Status: fixed
+- Severity: medium
+- Found during: phase 4 hash-router compatibility review
+- Symptom:
+  - `/admin#/students` loaded authenticated admin data correctly.
+  - `/admin.html#/students` rendered the same SPA shell, but protected API requests were sent to `/admin.html/api/admin/students` and returned `404`.
+- Root cause:
+  - `getMountPath()` treated the first path segment as a CloudBase mount prefix unless it matched a small exclude list.
+  - The list excluded `admin` but not `admin.html` or `index.html`, so direct HTML entry paths were mistaken for deployment prefixes.
+- Fix:
+  - Added `admin.html`, `index.html`, and `assets` to the non-prefix segment list in `frontend/src/shared/api/client.ts`.
+- Verification:
+  - Targeted browser re-check of `/admin.html#/students` passed after rebuild.
+  - Console error count for the direct `admin.html` entry re-check was `0`.
+
 ## Validation Notes
 
 - Student production page at `http://127.0.0.1:3000/` rendered correctly.
@@ -214,9 +298,31 @@
 - Browser-level admin usage filter validated with Playwright:
   - filled `26030101` in the usage filter
   - first visible result row matched `26030101`
+- Phase 4 deployment-chain review:
+  - `npm run build:frontend` passed after deployment/docs changes.
+  - `bash -n scripts/deploy-cloudbase.sh` passed.
+  - `git diff --check` passed.
+  - `npm ci --dry-run` and `npm --prefix frontend ci --dry-run` both completed successfully.
+  - A safe `npm run deploy` dry-run with a dummy `tcb` executable reached the final deploy command and verified the staged `index.js`, `public/index.html`, `public/admin.html`, and `public/assets/`.
+  - Real `npm run deploy` was not executed against CloudBase.
+- Phase 4 path/mount compatibility review:
+  - Vite config uses `base: './'`.
+  - Student and admin routers use `createWebHashHistory()`.
+  - Production `/admin#/students` and `/admin.html#/students` both rendered the admin students page after the `getMountPath()` fix.
+  - Temporary Vite dev server at `http://127.0.0.1:5180/admin.html#/login` rendered the admin login page with no console errors.
+- Phase 4 browser screenshots were captured under `/tmp/api-share-review-shots` for:
+  - desktop 1440x900 student landing, overview, guide, usage, models
+  - desktop 1440x900 admin students, whitelist, usage, and direct `admin.html` entry
+  - mobile 390px student landing, login/register/reset modals, registration API Key modal, overview, logout guard
+  - mobile 390px admin add-student modal and logout guard
+- Phase 5 remaining flow validation:
+  - Student registration with one-time whitelist record passed; registered test student: `review-reg-1777684344389`.
+  - Student logout then direct access to `#/overview` returned to landing.
+  - Admin logout then direct access to `#/students` returned to login.
+  - Student usage filters were exercised on an empty-record review account without making real upstream calls.
 
 ## Pending Validation
 
 - Current environment is live CloudBase data, so any further mutation testing should stay scoped to the dedicated review account and disposable records only.
 - Remaining optional work is deeper UX review rather than basic correctness:
-  - student usage filter interaction with non-empty records
+  - student usage filter interaction with non-empty records; no safe existing review account with non-empty usage was available, and no real upstream request was made to create one

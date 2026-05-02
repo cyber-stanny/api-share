@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AuthModal from '../components/AuthModal.vue';
+import KeyModal from '../components/KeyModal.vue';
 import ModelGroupList from '../components/ModelGroupList.vue';
 import { groupModelsByProvider } from '@shared/format';
 import type { ModelInfo } from '@shared/api/types';
@@ -9,7 +10,9 @@ import type { ModelInfo } from '@shared/api/types';
 const router = useRouter();
 
 const showAuthModal = ref(false);
+const showKeyModal = ref(false);
 const authMode = ref<'login' | 'register'>('login');
+const registeredApiKey = ref('');
 
 const publicModelCards: ModelInfo[] = [
   { id: 'MiniMax-M2.7', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
@@ -32,7 +35,12 @@ function openAuth(mode: 'login' | 'register') {
   showAuthModal.value = true;
 }
 
-async function handleAuthSuccess() {
+async function handleAuthSuccess(apiKey?: string) {
+  if (apiKey) {
+    registeredApiKey.value = apiKey;
+    showKeyModal.value = true;
+    return;
+  }
   await router.push('/overview');
 }
 </script>
@@ -60,6 +68,11 @@ async function handleAuthSuccess() {
       :initial-mode="authMode"
       @close="showAuthModal = false"
       @success="handleAuthSuccess"
+    />
+    <KeyModal
+      :visible="showKeyModal"
+      :api-key="registeredApiKey"
+      @close="showKeyModal = false"
     />
   </div>
 </template>

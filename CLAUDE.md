@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 LLM API proxy platform (大模型 API 中转平台) for students. Students register with whitelisted student IDs, receive an API Key, and proxy requests to upstream LLM providers (MiMo, MiniMax, DeepSeek). Supports OpenAI-compatible format (`/v1/chat/completions`) and Anthropic format (`/v1/messages`).
 
-**Stack**: Node.js + Express + serverless-http + Tencent CloudBase (serverless cloud functions + document database)
+**Stack**: Node.js + Express + serverless-http + Tencent CloudBase (serverless cloud functions + document database) + Vue 3/Vite frontend in `frontend/`
 
 ## Commands
 
@@ -17,7 +17,7 @@ cp .env.example .env               # Copy and fill in env vars
 # Backend only (port 3000):
 npm start
 
-# Frontend dev (port 5173, proxies /api, /v1, /admin to localhost:3000):
+# Frontend dev (port 5173, proxies /api and /v1 to localhost:3000):
 npm run dev:frontend
 
 # Build frontend (outputs to src/public/):
@@ -31,7 +31,7 @@ CLOUDBASE_ENV_ID=xxx node scripts/init-admin.js
 CLOUDBASE_ENV_ID=xxx node scripts/seed-upstreams.js
 ```
 
-Auto-deploys to CloudBase on push to `main` via GitHub Actions. The deploy workflow uses `sed` to replace `{{PLACEHOLDER}}` tokens in `cloudbaserc.json` with GitHub Secrets.
+Auto-deploys to CloudBase on push to `main` via GitHub Actions. The workflow installs root and `frontend/` dependencies from lockfiles, logs in with CloudBase secrets, then runs `npm run deploy`. The deploy script builds the Vite frontend, verifies `src/public/index.html`, `src/public/admin.html`, and `src/public/assets/`, stages `src/` plus root package files, and writes a temporary CloudBase config with environment variables.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ Single Express app wrapped in `serverless-http` for CloudBase cloud function run
 
 Vue 3 SPA built with Vite 5. Two entry points:
 - `frontend/index.html` → Student portal (route: `/`)
-- `frontend/admin.html` → Admin dashboard (route: `/#/login`)
+- `frontend/admin.html` → Admin dashboard dev entry; production is served at `/admin` and uses hash routes such as `#/login`
 
 Shared code lives in `frontend/src/shared/`:
 - `shared/api/client.ts` — `getMountPath()`, `api()`, `escapeHtml()`
@@ -50,7 +50,7 @@ Shared code lives in `frontend/src/shared/`:
 - `shared/styles/` — CSS tokens (`tokens.css`), base reset (`base.css`), controls (`controls.css`)
 - `shared/components/` — `Modal.vue`, `TopBar.vue`, `EmptyState.vue`
 
-Build outputs to `src/public/` (gitignored). Run `npm run build:frontend` before deploying.
+Build outputs to `src/public/` (gitignored). `npm run deploy` runs `npm run build:frontend` before staging files.
 
 ### Request Flow
 

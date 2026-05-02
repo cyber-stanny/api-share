@@ -13,6 +13,16 @@ trap cleanup EXIT
 # Build frontend first
 npm run build:frontend
 
+if [ ! -f "$ROOT_DIR/src/public/index.html" ] || [ ! -f "$ROOT_DIR/src/public/admin.html" ]; then
+  echo "Frontend build did not produce src/public/index.html and src/public/admin.html" >&2
+  exit 1
+fi
+
+if [ ! -d "$ROOT_DIR/src/public/assets" ] || ! find "$ROOT_DIR/src/public/assets" -type f | grep -q .; then
+  echo "Frontend build did not produce src/public/assets" >&2
+  exit 1
+fi
+
 cp -R "$ROOT_DIR/src/." "$STAGE_DIR/"
 cp "$ROOT_DIR/package.json" "$ROOT_DIR/package-lock.json" "$STAGE_DIR/"
 
@@ -29,7 +39,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const cfg = JSON.parse(fs.readFileSync(path.join(rootDir, 'cloudbaserc.json'), 'utf8'));
-const required = ['CLOUDBASE_ENV_ID', 'JWT_SECRET', 'ADMIN_INIT_PASSWORD', 'MIMO_API_KEY'];
+const required = ['CLOUDBASE_ENV_ID', 'JWT_SECRET', 'ADMIN_INIT_PASSWORD'];
 const missing = required.filter((key) => !process.env[key]);
 
 if (missing.length) {
