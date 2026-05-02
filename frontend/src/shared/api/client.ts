@@ -16,10 +16,30 @@ export interface ApiOptions extends RequestInit {
   token?: string;
 }
 
+function getStoredTokenForPath(path: string): string | null {
+  if (path.startsWith('/api/admin/') && path !== '/api/admin/login') {
+    return localStorage.getItem('adminToken');
+  }
+
+  if (path.startsWith('/api/auth/')) {
+    const publicPaths = new Set([
+      '/api/auth/login',
+      '/api/auth/register',
+      '/api/auth/reset-password',
+    ]);
+    if (!publicPaths.has(path)) {
+      return localStorage.getItem('studentToken');
+    }
+  }
+
+  return null;
+}
+
 export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise<T> {
   const { token, headers, ...rest } = opts;
   const authHeaders: Record<string, string> = {};
-  if (token) authHeaders.Authorization = `Bearer ${token}`;
+  const resolvedToken = token || getStoredTokenForPath(path);
+  if (resolvedToken) authHeaders.Authorization = `Bearer ${resolvedToken}`;
 
   const res = await fetch(getMountPath() + path, {
     ...rest,

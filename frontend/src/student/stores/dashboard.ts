@@ -4,6 +4,7 @@ import { api } from '@shared/api/client';
 import type { User, ModelInfo, UsageRecord } from '@shared/api/types';
 
 export interface Profile extends User {}
+type ModelGroupResponse = { provider: string; items: ModelInfo[] } | [string, ModelInfo[]];
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const profile = ref<Profile | null>(null);
@@ -18,13 +19,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function loadModels() {
-    const data = await api<{ models: ModelInfo[]; groups: [string, ModelInfo[]][] }>('/api/auth/models');
+    const data = await api<{ models: ModelInfo[]; groups?: ModelGroupResponse[] }>('/api/auth/models');
     models.value = data.models;
-    modelGroups.value = data.groups;
+    modelGroups.value = Array.isArray(data.groups)
+      ? data.groups.map((group): [string, ModelInfo[]] => Array.isArray(group) ? group : [group.provider, group.items])
+      : [];
   }
 
-  async function loadUsage() {
-    const data = await api<{ records: UsageRecord[] }>('/api/auth/usage?pageSize=20');
+  async function loadUsage(filters: { provider?: string; model?: string } = {}) {
+    const params = new URLSearchParams({ pageSize: '20' });
+    if (filters.provider) params.set('provider', filters.provider);
+    if (filters.model) params.set('model', filters.model);
+    const data = await api<{ records: UsageRecord[] }>(`/api/auth/usage?${params.toString()}`);
     usageRecords.value = data.records;
   }
 

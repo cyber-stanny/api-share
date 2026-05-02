@@ -12,6 +12,12 @@ const route = useRoute();
 const auth = useAuthStore();
 
 const showTopBar = computed(() => auth.isLoggedIn && route.path !== '/');
+const navItems = [
+  { path: '/overview', label: '概览' },
+  { path: '/guide', label: '接入指导' },
+  { path: '/usage', label: '调用量' },
+  { path: '/models', label: '模型' },
+];
 
 function handleLogout() {
   auth.logout();
@@ -23,7 +29,14 @@ function handleLogout() {
   <div id="app">
     <TopBar v-if="showTopBar" show-logout @logout="handleLogout">
       <template #nav>
-        <button @click="router.push('/overview')">控制台</button>
+        <button
+          v-for="item in navItems"
+          :key="item.path"
+          :class="{ active: route.path === item.path }"
+          @click="router.push(item.path)"
+        >
+          {{ item.label }}
+        </button>
       </template>
     </TopBar>
     <router-view />
@@ -33,5 +46,8 @@ function handleLogout() {
 <style>
 #app {
   min-height: 100vh;
+}
+.active {
+  color: var(--primary);
 }
 </style>

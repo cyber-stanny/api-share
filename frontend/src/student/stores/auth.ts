@@ -23,10 +23,17 @@ export const useAuthStore = defineStore('auth', () => {
     return data.apiKey;
   }
 
+  async function resetPassword(studentId: string, name: string, newPassword: string) {
+    await api('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ studentId, name, newPassword }),
+    });
+  }
+
   function logout() {
     token.value = null;
     localStorage.removeItem('studentToken');
   }
 
-  return { token, isLoggedIn, login, register, logout };
+  return { token, isLoggedIn, login, register, resetPassword, logout };
 });

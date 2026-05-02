@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useAuthStore } from '../stores/auth';
 
 const props = defineProps<{
@@ -14,26 +14,48 @@ const emit = defineEmits<{
 
 const auth = useAuthStore();
 
-const mode = ref(props.initialMode || 'login');
+const mode = ref<'login' | 'register' | 'reset'>(props.initialMode || 'login');
 const studentId = ref('');
 const password = ref('');
 const name = ref('');
 const error = ref('');
+const message = ref('');
 const loading = ref(false);
 
-function switchMode(newMode: 'login' | 'register') {
+function switchMode(newMode: 'login' | 'register' | 'reset') {
   mode.value = newMode;
   error.value = '';
+  message.value = '';
 }
+
+watch(() => props.initialMode, (value) => {
+  mode.value = value || 'login';
+  error.value = '';
+  message.value = '';
+});
+
+watch(() => props.visible, (value) => {
+  if (value) {
+    mode.value = props.initialMode || 'login';
+    error.value = '';
+    message.value = '';
+  }
+});
 
 async function handleSubmit() {
   error.value = '';
+  message.value = '';
   loading.value = true;
   try {
     if (mode.value === 'register') {
       await auth.register(studentId.value, password.value, name.value);
       emit('success');
       emit('close');
+    } else if (mode.value === 'reset') {
+      await auth.resetPassword(studentId.value, name.value, password.value);
+      mode.value = 'login';
+      password.value = '';
+      message.value = '密码已重置，请使用新密码登录。';
     } else {
       await auth.login(studentId.value, password.value);
       emit('success');
@@ -51,9 +73,17 @@ async function handleSubmit() {
   <Teleport to="body">
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="panel auth-panel">
-        <h2 class="panel-title">{{ mode === 'login' ? '登录' : '注册' }}</h2>
+        <h2 class="panel-title">
+          {{ mode === 'login' ? '登录' : mode === 'register' ? '注册' : '重置密码' }}
+        </h2>
         <p class="panel-sub">
-          {{ mode === 'login' ? '输入学号和密码进入学生控制台。' : '使用白名单学号注册，领取专属 API Key。' }}
+          {{
+            mode === 'login'
+              ? '输入学号和密码进入学生控制台。'
+              : mode === 'register'
+                ? '使用白名单学号注册，领取专属 API Key。'
+                : '使用学号和姓名验证后设置新密码。'
+          }}
         </p>
         <div class="tabs">
           <button
@@ -71,24 +101,47 @@ async function handleSubmit() {
             注册
           </button>
         </div>
+        <div v-if="message" class="message ok">{{ message }}</div>
         <div v-if="error" class="message err">{{ error }}</div>
         <div class="field">
           <label>学号</label>
           <input v-model="studentId" class="input" placeholder="2024010001" />
         </div>
-        <div v-if="mode === 'register'" class="field">
+        <div v-if="mode === 'register' || mode === 'reset'" class="field">
           <label>姓名</label>
           <input v-model="name" class="input" placeholder="张同学" />
         </div>
         <div class="field">
-          <label>密码</label>
+          <label>{{ mode === 'reset' ? '新密码' : '密码' }}</label>
           <input v-model="password" type="password" class="input" placeholder="至少 6 位" />
         </div>
         <div class="form-actions">
           <button class="btn primary" :disabled="loading" @click="handleSubmit">
-            {{ mode === 'login' ? '登录' : '注册并领取 Key' }}
+            {{
+              mode === 'login'
+                ? '登录'
+                : mode === 'register'
+                  ? '注册并领取 Key'
+                  : '重置密码'
+            }}
           </button>
-          <span v-if="mode === 'register'" style="font-size:11px;color:var(--light-muted)">仅白名单学号可注册</span>
+          <button
+            v-if="mode === 'login'"
+            type="button"
+            class="link-btn"
+            @click="switchMode('reset')"
+          >
+            忘记密码
+          </button>
+          <span v-else-if="mode === 'register'" style="font-size:11px;color:var(--light-muted)">仅白名单学号可注册</span>
+          <button
+            v-else
+            type="button"
+            class="link-btn"
+            @click="switchMode('login')"
+          >
+            返回登录
+          </button>
         </div>
       </div>
     </div>
@@ -122,4 +175,17 @@ async function handleSubmit() {
 }
 .tab.active { color: var(--primary); border-color: var(--primary); }
 .form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
+.link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+}
+.link-btn:hover { color: var(--secondary); }
+.message.ok {
+  background: rgba(105, 141, 105, .12);
+  color: var(--secondary);
+}
 </style>
