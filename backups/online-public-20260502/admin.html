@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Share 管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #6B8F71;
+  --primary-light: #E8F0E9;
+  --secondary: #C47A5A;
+  --secondary-light: #F5E8E0;
+  --bg: #F7F4EE;
+  --shell: #EDE9E3;
+  --surface: #FFFFFF;
+  --text: #2D2D2D;
+  --muted: #8F8982;
+  --light-muted: #BDB6AD;
+  --border: #E8E4DE;
+  --danger: #C75B5B;
+  --danger-light: rgba(199,91,91,.08);
+  --mono: "JetBrains Mono", "SF Mono", monospace;
+  --serif: "Noto Serif JP", Georgia, serif;
+  --sans: "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--sans); background: var(--shell); color: var(--text); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+.hidden { display: none; }
+
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.login-card { width: min(400px, 100%); padding: 32px; background: var(--surface); border-radius: 12px; box-shadow: 0 12px 36px rgba(45,45,45,.06), 0 0 0 1px rgba(45,45,45,.03); }
+.login-card h2 { font: 700 24px var(--serif); margin-bottom: 4px; }
+.login-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+.input { width: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding: 11px 13px; outline: none; }
+.input:focus { border-color: var(--primary); background: white; }
+.btn { border: 0; border-radius: 8px; padding: 10px 18px; background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.06); font-weight: 600; transition: opacity .15s; }
+.btn:hover { opacity: .85; }
+.btn.primary { background: var(--primary); color: white; }
+.btn.danger { background: var(--danger-light); color: var(--danger); box-shadow: none; }
+.btn.sm { padding: 6px 12px; font-size: 12px; }
+.btn.icon { width: 32px; height: 32px; padding: 0; display: inline-grid; place-items: center; border-radius: 6px; background: transparent; box-shadow: none; color: var(--muted); border: 1px solid var(--border); }
+.btn.icon:hover { color: var(--primary); border-color: var(--primary); }
+.msg { padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+.msg.err { background: var(--danger-light); color: var(--danger); }
+.msg.ok { background: var(--primary-light); color: var(--primary); }
+
+.topbar { height: 64px; padding: 0 34px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,.78); border-bottom: 1px solid var(--border); backdrop-filter: blur(14px); position: sticky; top: 0; z-index: 10; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--secondary); color: white; display: grid; place-items: center; font: 700 14px var(--mono); }
+.brand-name { font: 700 16px var(--serif); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.env-tag { font: 500 11px var(--mono); color: var(--muted); background: var(--bg); padding: 3px 8px; border-radius: 4px; }
+
+.shell { display: flex; min-height: calc(100vh - 64px); }
+.sidebar { width: 200px; background: #F0EDE7; border-right: 1px solid var(--border); padding: 24px 0; flex-shrink: 0; }
+.side-title { padding: 0 22px 22px; font: 700 15px var(--serif); color: var(--muted); }
+.side-item { width: 100%; border: 0; background: transparent; text-align: left; padding: 10px 22px; color: var(--muted); border-left: 2px solid transparent; font-weight: 500; font-size: 14px; }
+.side-item:hover { color: var(--text); }
+.side-item.active { color: var(--primary); background: var(--primary-light); border-left-color: var(--primary); font-weight: 600; }
+.main { flex: 1; padding: 28px; overflow: auto; }
+
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; }
+.page-head h2 { font: 700 22px var(--serif); margin: 0; }
+.page-actions { display: flex; gap: 8px; align-items: center; }
+
+.card { background: var(--surface); border-radius: 10px; box-shadow: 0 2px 8px rgba(45,45,45,.04), 0 0 0 1px rgba(45,45,45,.02); }
+.card-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.card-head h3 { font: 600 14px; margin: 0; }
+.card-body { padding: 0; }
+.card-body.padded { padding: 20px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+th { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(107,143,113,.03); }
+code { font-family: var(--mono); font-size: 12px; background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+
+.badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 12px; font-weight: 500; font-family: var(--mono); }
+.badge.ok { background: var(--primary-light); color: var(--primary); }
+.badge.warn { background: #FEF3C7; color: #92400E; }
+.badge.danger { background: var(--danger-light); color: var(--danger); }
+
+.filter-row { display: flex; gap: 8px; align-items: center; }
+.input.sm { padding: 6px 10px; font-size: 12px; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(45,45,45,.25); display: flex; align-items: center; justify-content: center; z-index: 40; padding: 24px; }
+.modal-card { width: min(520px, 100%); padding: 24px; background: var(--surface); border-radius: 12px; box-shadow: 0 20px 60px rgba(45,45,45,.12); }
+.modal-card h3 { font: 700 18px var(--serif); margin-bottom: 18px; }
+.modal-card .field-row { display: flex; gap: 14px; margin-bottom: 14px; }
+.modal-card .field-row .field { flex: 1; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+.usage-prompt { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 2px; }
+.usage-limit { font-size: 11px; color: var(--light-muted); margin-top: 2px; }
+
+@media (max-width: 900px) {
+  .shell { display: block; }
+  .sidebar { width: 100%; display: flex; overflow-x: auto; padding: 8px; }
+  .side-title { display: none; }
+  .side-item { white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; border-radius: 6px; }
+  .side-item.active { border-left: 0; border-bottom-color: var(--primary); }
+  .main { padding: 18px; }
+  .topbar { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<div id="loginPage" class="login-wrap">
+  <div class="login-card">
+    <h2>管理后台</h2>
+    <p class="login-sub">API Share 管理员登录</p>
+    <div id="loginMsg"></div>
+    <div class="field">
+      <label>用户名</label>
+      <input class="input" id="loginUser" value="admin" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input class="input" id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:6px" onclick="doLogin()">登录</button>
+  </div>
+</div>
+
+<div id="dashboard" class="hidden">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div class="brand-name">API Share</div>
+    </div>
+    <div class="topbar-right">
+      <span class="env-tag">管理后台</span>
+      <button class="btn sm" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="side-title">管理</div>
+      <button class="side-item active" data-tab="students" onclick="switchTab('students')">学生管理</button>
+      <button class="side-item" data-tab="whitelist" onclick="switchTab('whitelist')">白名单</button>
+      <button class="side-item" data-tab="usage" onclick="switchTab('usage')">调用日志</button>
+    </aside>
+    <main class="main">
+
+      <div id="tab-students">
+        <div class="page-head">
+          <h2>学生管理</h2>
+          <div class="page-actions">
+            <button class="btn icon" onclick="loadStudents()" title="刷新">&#8635;</button>
+            <button class="btn primary sm" onclick="showAddStudent()">添加学生</button>
+          </div>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>姓名</th><th>MiMo 日/周</th><th>DeepSeek 日/周</th><th>MiniMax 日/周</th><th>MiniMax 限额</th><th></th></tr></thead>
+            <tbody id="studentTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-whitelist" class="hidden">
+        <div class="page-head">
+          <h2>白名单</h2>
+          <div class="page-actions">
+            <button class="btn icon" onclick="loadWhitelist()" title="刷新">&#8635;</button>
+            <button class="btn primary sm" onclick="showAddWhitelist()">添加白名单</button>
+          </div>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>学号</th><th>姓名</th><th>添加时间</th><th></th></tr></thead>
+            <tbody id="whitelistTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-usage" class="hidden">
+        <div class="page-head">
+          <h2>调用日志</h2>
+          <div class="page-actions">
+            <div class="filter-row">
+              <input class="input sm" id="usageFilter" placeholder="按学号筛选">
+              <button class="btn sm" onclick="loadUsage()">查询</button>
+            </div>
+            <button class="btn icon" onclick="loadUsage()" title="刷新">&#8635;</button>
+          </div>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>学号</th><th>供应商</th><th>模型</th><th>Tokens</th><th>计费</th><th>金额</th><th>状态</th><th>时间</th></tr></thead>
+            <tbody id="usageTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="modal" class="modal-overlay hidden" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-card" id="modalContent"></div>
+</div>
+
+<script>
+let token = localStorage.getItem('adminToken');
+function getMountPath() {
+  const firstSegment = window.location.pathname.split('/').filter(Boolean)[0] || '';
+  const appRoutes = new Set(['admin', 'api', 'health', 'v1']);
+  return firstSegment && !appRoutes.has(firstSegment) ? `/${firstSegment}` : '';
+}
+
+const API = getMountPath();
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers || {}) },
+  });
+  const data = await res.json();
+  if (!res.ok && (res.status === 401 || res.status === 403)) { doLogout(); throw new Error('认证失败'); }
+  return data;
+}
+
+function doLogin() {
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+  document.getElementById('loginMsg').innerHTML = '';
+  fetch(API + '/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      token = data.data.token;
+      localStorage.setItem('adminToken', token);
+      showDashboard();
+    } else {
+      document.getElementById('loginMsg').innerHTML = `<div class="msg err">${escapeHtml(data.error)}</div>`;
+    }
+  }).catch(() => {
+    document.getElementById('loginMsg').innerHTML = `<div class="msg err">网络错误，请检查连接后重试</div>`;
+  });
+}
+
+function doLogout() {
+  token = null;
+  localStorage.removeItem('adminToken');
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('dashboard').classList.add('hidden');
+}
+
+function showDashboard() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  loadStudents();
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.side-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  ['students', 'whitelist', 'usage'].forEach(n => document.getElementById('tab-' + n).classList.toggle('hidden', n !== name));
+  if (name === 'students') loadStudents();
+  if (name === 'whitelist') loadWhitelist();
+  if (name === 'usage') loadUsage();
+}
+
+function fmtDate(d) { return d ? new Date(d).toLocaleString('zh-CN') : '-'; }
+function fmtTokens(n) { return n >= 10000 ? Math.round(n / 1000) + 'K' : (n || 0).toLocaleString(); }
+function fmtCny(n) { return `¥${Number(n || 0).toFixed(6)}`; }
+function fmtCny2(n) { return `¥${Number(n || 0).toFixed(2)}`; }
+
+function providerLabel(v) {
+  return { mimo: 'MiMo', minimax: 'MiniMax', deepseek: 'DeepSeek' }[v] || v || '-';
+}
+
+async function loadStudents() {
+  const data = await api('/api/admin/students');
+  if (!data.success) return;
+  document.getElementById('studentTable').innerHTML = data.data.students.map(s => {
+    const dL = s.quota?.dailyTokenLimit || 500000;
+    const wL = s.quota?.weeklyTokenLimit || 2000000;
+    const mD = (s.mimoDailyTokensUsed ?? s.dailyTokensUsed) || 0;
+    const mW = (s.mimoWeeklyTokensUsed ?? s.weeklyTokensUsed) || 0;
+    const ddc = s.deepseekDailyCostCny || 0;
+    const dwc = s.deepseekWeeklyCostCny || 0;
+    const ddt = s.deepseekDailyTokensUsed || 0;
+    const dwt = s.deepseekWeeklyTokensUsed || 0;
+    const dsQ = s.deepseekQuota || {};
+    const dsDL = dsQ.dailyCostLimitCny ?? 5;
+    const dsWL = dsQ.weeklyCostLimitCny ?? 20;
+    const mPct = dL > 0 ? Math.round(mD / dL * 100) : 0;
+    const dPct = dsDL > 0 ? Math.round(ddc / dsDL * 100) : 0;
+    const mBadge = mPct >= 90 ? 'danger' : mPct >= 70 ? 'warn' : 'ok';
+    const dBadge = dPct >= 90 ? 'danger' : dPct >= 70 ? 'warn' : 'ok';
+    return `<tr>
+      <td>
+        <span style="font-weight:600">${escapeHtml(s.name) || escapeHtml(s.studentId)}</span>
+        <div class="usage-prompt">${escapeHtml(s.studentId)}</div>
+      </td>
+      <td>
+        <span class="badge ${mBadge}">${fmtTokens(mD)} (${mPct}%)</span>
+        <div class="usage-prompt">周 ${fmtTokens(mW)}</div>
+        <div class="usage-limit">限额 ${fmtTokens(dL)} / ${fmtTokens(wL)}</div>
+      </td>
+      <td>
+        <span class="badge ${dBadge}">${fmtCny2(ddc)} (${dPct}%)</span>
+        <div class="usage-prompt">周 ${fmtCny2(dwc)} · ${fmtTokens(ddt)}/${fmtTokens(dwt)} tokens</div>
+        <div class="usage-limit">限额 ¥${dsDL} / ¥${dsWL}</div>
+      </td>
+      <td>${fmtTokens(s.minimaxDailyRequestsUsed || 0)} / ${fmtTokens(s.minimaxWeeklyRequestsUsed || 0)}</td>
+      <td>${s.minimaxQuota?.dailyRequestLimit ?? '-'} / ${s.minimaxQuota?.weeklyRequestLimit ?? '-'}</td>
+      <td><button class="btn sm" onclick="editQuota('${escapeHtml(s._id)}','${escapeHtml(s.studentId)}',${dL},${wL},${dsDL},${dsWL},${s.minimaxQuota?.dailyRequestLimit ?? 1000},${s.minimaxQuota?.weeklyRequestLimit ?? 4000})">调额度</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showAddStudent() {
+  document.getElementById('modalContent').innerHTML = `
+    <h3>添加学生</h3>
+    <div class="field-row">
+      <div class="field"><label>学号</label><input class="input" id="addStuId"></div>
+      <div class="field"><label>姓名</label><input class="input" id="addStuName" placeholder="选填"></div>
+    </div>
+    <div class="field">
+      <label>初始密码</label>
+      <input class="input" id="addStuPass" value="123456">
+    </div>
+    <div class="field-row">
+      <div class="field"><label>每日 Token 上限（MiMo）</label><input class="input" id="addDaily" type="number" value="500000"></div>
+      <div class="field"><label>每周 Token 上限（MiMo）</label><input class="input" id="addWeekly" type="number" value="2000000"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn primary" onclick="addStudent()">添加</button>
+    </div>`;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+async function addStudent() {
+  const data = await api('/api/admin/students', { method: 'POST', body: JSON.stringify({
+    studentId: document.getElementById('addStuId').value,
+    name: document.getElementById('addStuName').value,
+    password: document.getElementById('addStuPass').value,
+    dailyTokenLimit: parseInt(document.getElementById('addDaily').value),
+    weeklyTokenLimit: parseInt(document.getElementById('addWeekly').value),
+  }) });
+  if (data.success) {
+    document.getElementById('modalContent').innerHTML = `
+      <h3>添加成功</h3>
+      <div class="field"><label>学号</label><p>${escapeHtml(data.data.studentId)}</p></div>
+      <div class="field"><label>API Key（请复制保存，不会再次显示）</label><input class="input" value="${escapeHtml(data.data.apiKey)}" readonly onclick="this.select()" style="font-family:var(--mono);font-size:13px"></div>
+      <div class="modal-actions">
+        <button class="btn primary" onclick="closeModal();loadStudents()">完成</button>
+      </div>`;
+  } else { alert(data.error); }
+}
+
+function editQuota(id, sid, daily, weekly, dsDaily, dsWeekly, mmDaily, mmWeekly) {
+  document.getElementById('modalContent').innerHTML = `
+    <h3>调整额度 · ${escapeHtml(sid)}</h3>
+    <div class="field-row">
+      <div class="field"><label>每日 Token 上限（MiMo）</label><input class="input" id="editDaily" type="number" value="${daily}"></div>
+      <div class="field"><label>每周 Token 上限（MiMo）</label><input class="input" id="editWeekly" type="number" value="${weekly}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>每日金额上限（DeepSeek ¥）</label><input class="input" id="editDsDaily" type="number" step="0.01" value="${dsDaily}"></div>
+      <div class="field"><label>每周金额上限（DeepSeek ¥）</label><input class="input" id="editDsWeekly" type="number" step="0.01" value="${dsWeekly}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>每日调用次数（MiniMax）</label><input class="input" id="editMmDaily" type="number" value="${mmDaily ?? 1000}"></div>
+      <div class="field"><label>每周调用次数（MiniMax）</label><input class="input" id="editMmWeekly" type="number" value="${mmWeekly ?? 4000}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn primary" onclick="saveQuota('${id}')">保存</button>
+    </div>`;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+async function saveQuota(id) {
+  const data = await api(`/api/admin/students/${id}/quota`, { method: 'PUT', body: JSON.stringify({
+    dailyTokenLimit: parseInt(document.getElementById('editDaily').value),
+    weeklyTokenLimit: parseInt(document.getElementById('editWeekly').value),
+    deepseekDailyCostLimitCny: parseFloat(document.getElementById('editDsDaily').value),
+    deepseekWeeklyCostLimitCny: parseFloat(document.getElementById('editDsWeekly').value),
+    minimaxDailyRequestLimit: parseInt(document.getElementById('editMmDaily').value),
+    minimaxWeeklyRequestLimit: parseInt(document.getElementById('editMmWeekly').value),
+  }) });
+  if (data.success) { closeModal(); loadStudents(); } else { alert(data.error); }
+}
+
+async function loadWhitelist() {
+  const data = await api('/api/admin/whitelist');
+  if (!data.success) return;
+  document.getElementById('whitelistTable').innerHTML = data.data.items.map(w => `<tr>
+    <td style="font-weight:600">${escapeHtml(w.studentId)}</td>
+    <td>${escapeHtml(w.name) || '<span style="color:var(--light-muted)">-</span>'}</td>
+    <td style="color:var(--muted)">${fmtDate(w.addedAt)}</td>
+    <td><button class="btn danger sm" onclick="deleteWhitelist('${escapeHtml(w._id)}')">删除</button></td>
+  </tr>`).join('');
+}
+
+function showAddWhitelist() {
+  document.getElementById('modalContent').innerHTML = `
+    <h3>添加白名单</h3>
+    <div class="field">
+      <label>学号列表</label>
+      <textarea class="input" id="addWlIds" rows="6" placeholder="每行一个，格式：学号 姓名（姓名选填）&#10;202401050655 王思懿&#10;202401050687 张中宝&#10;202401050731"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn primary" onclick="addWhitelist()">添加</button>
+    </div>`;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+async function addWhitelist() {
+  const raw = document.getElementById('addWlIds').value;
+  const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  if (lines.length === 0) return alert('请输入学号');
+  const items = lines.map(line => {
+    const parts = line.split(/\s+/);
+    return { studentId: parts[0], name: parts[1] || '' };
+  });
+  const data = await api('/api/admin/whitelist', { method: 'POST', body: JSON.stringify({ items }) });
+  if (data.success) { closeModal(); loadWhitelist(); alert(data.data.message); } else { alert(data.error); }
+}
+
+async function deleteWhitelist(id) {
+  if (!confirm('确定删除？')) return;
+  await api(`/api/admin/whitelist/${id}`, { method: 'DELETE' });
+  loadWhitelist();
+}
+
+async function loadUsage() {
+  const sid = document.getElementById('usageFilter').value;
+  const qs = sid ? `?studentId=${sid}` : '';
+  const data = await api('/api/admin/usage' + qs);
+  if (!data.success) return;
+  document.getElementById('usageTable').innerHTML = data.data.records.map(r => `<tr>
+    <td style="font-weight:600">${escapeHtml(r.studentId)}</td>
+    <td>${escapeHtml(providerLabel(r.billingProvider))}</td>
+    <td><code>${escapeHtml(r.model)}</code></td>
+    <td style="font-family:var(--mono)">${(r.totalTokens || 0).toLocaleString()}</td>
+    <td>${escapeHtml(r.billingType || 'tokens')}${r.billingUnits ? ` · ${fmtTokens(r.billingUnits)}` : ''}</td>
+    <td style="font-family:var(--mono)">${r.billingProvider === 'deepseek' ? fmtCny(r.billingCostCny) : '-'}</td>
+    <td>${r.status}</td>
+    <td style="color:var(--muted)">${fmtDate(r.createdAt)}</td>
+  </tr>`).join('');
+}
+
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+if (token) showDashboard();
+</script>
+</body>
+</html>

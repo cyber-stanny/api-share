@@ -73,6 +73,7 @@ async function handleSubmit() {
   <Teleport to="body">
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="panel auth-panel">
+        <button class="close-btn" @click="emit('close')">✕</button>
         <h2 class="panel-title">
           {{ mode === 'login' ? '登录' : mode === 'register' ? '注册' : '重置密码' }}
         </h2>
@@ -85,7 +86,7 @@ async function handleSubmit() {
                 : '使用学号和姓名验证后设置新密码。'
           }}
         </p>
-        <div class="tabs">
+        <div v-if="mode !== 'reset'" class="tabs">
           <button
             class="tab"
             :class="{ active: mode === 'login' }"
@@ -165,7 +166,10 @@ async function handleSubmit() {
 <style scoped>
 .auth-panel {
   width: min(480px, 100%);
-  padding: 28px;
+  padding: 32px;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(45,45,45,.12);
 }
 .panel-title {
   font: 700 24px var(--serif);
@@ -179,6 +183,21 @@ async function handleSubmit() {
   font-weight: 600; cursor: pointer;
 }
 .tab.active { color: var(--primary); border-color: var(--primary); }
+.close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--light-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 6px;
+  line-height: 1;
+  border-radius: 4px;
+}
+.close-btn:hover { color: var(--muted); background: var(--bg); }
+.auth-panel { position: relative; }
 .form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .link-btn {
   border: 0;

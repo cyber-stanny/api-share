@@ -6,25 +6,37 @@ const props = defineProps<{
   studentId: string;
   currentDaily: number;
   currentWeekly: number;
+  currentDsDaily: number;
+  currentDsWeekly: number;
+  currentMmDaily: number;
+  currentMmWeekly: number;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  save: [daily: number, weekly: number];
+  save: [daily: number, weekly: number, dsDaily: number, dsWeekly: number, mmDaily: number, mmWeekly: number];
 }>();
 
 const daily = ref(props.currentDaily);
 const weekly = ref(props.currentWeekly);
+const dsDaily = ref(props.currentDsDaily);
+const dsWeekly = ref(props.currentDsWeekly);
+const mmDaily = ref(props.currentMmDaily);
+const mmWeekly = ref(props.currentMmWeekly);
 
 watch(() => props.visible, (v) => {
   if (v) {
     daily.value = props.currentDaily;
     weekly.value = props.currentWeekly;
+    dsDaily.value = props.currentDsDaily;
+    dsWeekly.value = props.currentDsWeekly;
+    mmDaily.value = props.currentMmDaily;
+    mmWeekly.value = props.currentMmWeekly;
   }
 });
 
 function handleSave() {
-  emit('save', daily.value, weekly.value);
+  emit('save', daily.value, weekly.value, dsDaily.value, dsWeekly.value, mmDaily.value, mmWeekly.value);
 }
 </script>
 
@@ -33,14 +45,37 @@ function handleSave() {
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="modal">
         <h3>调整额度 - {{ studentId }}</h3>
+        <div class="section-label">MiMo Token 限额</div>
         <div class="form-row">
           <div class="field">
             <label>每日 token 上限</label>
-            <input v-model.number="daily" class="input" type="number" />
+            <input v-model.number="daily" class="input" type="number" min="0" />
           </div>
           <div class="field">
             <label>每周 token 上限</label>
-            <input v-model.number="weekly" class="input" type="number" />
+            <input v-model.number="weekly" class="input" type="number" min="0" />
+          </div>
+        </div>
+        <div class="section-label">DeepSeek 金额限额（¥）</div>
+        <div class="form-row">
+          <div class="field">
+            <label>每日金额上限</label>
+            <input v-model.number="dsDaily" class="input" type="number" min="0" step="0.5" />
+          </div>
+          <div class="field">
+            <label>每周金额上限</label>
+            <input v-model.number="dsWeekly" class="input" type="number" min="0" step="1" />
+          </div>
+        </div>
+        <div class="section-label">MiniMax 调用次数限额</div>
+        <div class="form-row">
+          <div class="field">
+            <label>每日调用上限</label>
+            <input v-model.number="mmDaily" class="input" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label>每周调用上限</label>
+            <input v-model.number="mmWeekly" class="input" type="number" min="0" />
           </div>
         </div>
         <div class="modal-actions">
@@ -71,11 +106,21 @@ function handleSave() {
   background: var(--surface);
   border-radius: 12px;
   padding: 28px;
-  min-width: 400px;
+  min-width: 440px;
   box-shadow: 0 12px 36px rgba(45,45,45,.08);
 }
 .modal h3 { margin: 0 0 16px; font: 700 18px var(--serif); }
-.form-row { display: flex; gap: 16px; margin-bottom: 16px; }
-.field { flex: 1; }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin: 14px 0 8px;
+}
+.section-label:first-of-type { margin-top: 0; }
+.form-row { display: flex; gap: 16px; }
+.field { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; color: var(--muted); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 </style>

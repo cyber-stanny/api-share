@@ -52,8 +52,9 @@ curl ${openaiBaseUrl()}/chat/completions \\
 .block { padding: 18px; background: var(--surface); border-radius: 8px; margin-bottom: 18px; }
 .block h3 { margin: 0 0 14px; font-size: 14px; }
 .code {
-  background: #2D2D2D;
-  color: #D5CEC4;
+  background: var(--shell);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
   font: 12px/1.7 var(--mono);

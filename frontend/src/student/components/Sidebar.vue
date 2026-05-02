@@ -22,10 +22,6 @@ function isActive(path: string) {
 
 <template>
   <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-mark">A</div>
-      <div class="brand-name">API Share</div>
-    </div>
     <nav class="sidebar-nav">
       <button
         v-for="item in navItems"
@@ -51,26 +47,10 @@ function isActive(path: string) {
   flex-direction: column;
   background: var(--surface);
   border-right: 1px solid var(--border);
-}
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 20px;
-  border-bottom: 1px solid var(--border);
-}
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--primary);
-  color: white;
-  display: grid;
-  place-items: center;
-  font: 700 14px var(--mono);
-}
-.brand-name {
-  font: 700 16px var(--serif);
+  position: sticky;
+  top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
 }
 .sidebar-nav {
   flex: 1;

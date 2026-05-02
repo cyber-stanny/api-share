@@ -11,10 +11,18 @@ export interface User {
     dailyRequestLimit: number;
     weeklyRequestLimit: number;
   };
+  deepseekQuota?: {
+    dailyCostLimitCny: number;
+    weeklyCostLimitCny: number;
+  };
   dailyTokensUsed: number;
   weeklyTokensUsed: number;
   minimaxDailyRequestsUsed: number;
   minimaxWeeklyRequestsUsed: number;
+  deepseekDailyTokensUsed?: number;
+  deepseekWeeklyTokensUsed?: number;
+  deepseekDailyCostCny?: number;
+  deepseekWeeklyCostCny?: number;
   createdAt: string;
 }
 
@@ -26,6 +34,8 @@ export interface UsageRecord {
   totalTokens: number;
   billingType?: string;
   billingUnits?: number;
+  billingProvider?: string;
+  billingCostCny?: number;
   status: number;
   createdAt: string;
 }

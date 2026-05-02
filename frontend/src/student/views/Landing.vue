@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 import AuthModal from '../components/AuthModal.vue';
 import KeyModal from '../components/KeyModal.vue';
 import ModelGroupList from '../components/ModelGroupList.vue';
+import TopBar from '@shared/components/TopBar.vue';
 import { groupModelsByProvider } from '@shared/format';
 import type { ModelInfo } from '@shared/api/types';
 
 const router = useRouter();
+const auth = useAuthStore();
+
 
 const showAuthModal = ref(false);
 const showKeyModal = ref(false);
@@ -26,11 +30,17 @@ const publicModelCards: ModelInfo[] = [
   { id: 'mimo-v2.5', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-flash', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-pro', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
 ];
 
 const publicGroups = groupModelsByProvider(publicModelCards);
 
 function openAuth(mode: 'login' | 'register') {
+  if (auth.isLoggedIn) {
+    router.push('/overview');
+    return;
+  }
   authMode.value = mode;
   showAuthModal.value = true;
 }
@@ -47,11 +57,12 @@ async function handleAuthSuccess(apiKey?: string) {
 
 <template>
   <div class="layout">
+    <TopBar />
     <section class="landing">
       <div class="hero">
-        <div class="eyebrow">Token Plan Gateway · MiMo / MiniMax</div>
+        <div class="eyebrow">Token Plan Gateway · MiMo / MiniMax / DeepSeek</div>
         <h1>学生专属的大模型 API 入口</h1>
-        <p>用白名单学号注册，领取专属 API Key。当前开放 MiMo / MiniMax 文本模型，直接接入 Claude Code 或 OpenAI 兼容客户端。</p>
+        <p>用白名单学号注册，领取专属 API Key。当前开放 MiMo / MiniMax / DeepSeek 文本模型，直接接入 Claude Code 或 OpenAI 兼容客户端。</p>
         <div class="actions">
           <button class="btn primary" @click="openAuth('register')">注册领取 Key</button>
           <button class="btn" @click="openAuth('login')">登录控制台</button>
@@ -78,14 +89,17 @@ async function handleAuthSuccess(apiKey?: string) {
 </template>
 
 <style scoped>
-.layout { min-height: 100vh; }
+.layout { width: 100%; min-height: calc(100vh - 64px); display: flex; flex-direction: column; box-sizing: border-box; }
 .landing {
-  display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(320px, 460px);
-  gap: 44px;
-  padding: 62px 52px 44px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 62px 52px 52px;
   max-width: 1180px;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 .eyebrow {
   color: var(--secondary);
@@ -112,6 +126,8 @@ async function handleAuthSuccess(apiKey?: string) {
   max-width: 1180px;
   margin: 0 auto 44px;
   padding: 0 52px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .section-label {
   color: var(--muted);
@@ -122,7 +138,7 @@ async function handleAuthSuccess(apiKey?: string) {
   margin-bottom: 12px;
 }
 @media (max-width: 900px) {
-  .landing { grid-template-columns: 1fr; padding: 34px 18px; }
+  .landing { padding: 34px 18px; }
   .models-strip { padding: 0 18px 32px; }
 }
 </style>

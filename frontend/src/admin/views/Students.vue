@@ -6,10 +6,19 @@ import type { User } from '@shared/api/types';
 import QuotaEditor from '../components/QuotaEditor.vue';
 
 const students = ref<User[]>([]);
+const loading = ref(false);
+const error = ref('');
 const showQuotaEditor = ref(false);
-const editingStudent = ref<{ id: string; studentId: string; daily: number; weekly: number } | null>(null);
+const editingStudent = ref<{
+  id: string; studentId: string;
+  daily: number; weekly: number;
+  dsDaily: number; dsWeekly: number;
+  mmDaily: number; mmWeekly: number;
+} | null>(null);
 const showAddDialog = ref(false);
 const showResetDialog = ref(false);
+const addError = ref('');
+const resetError = ref('');
 const addForm = ref({
   studentId: '',
   name: '',
@@ -24,24 +33,27 @@ const resetForm = ref({
 });
 
 async function loadStudents() {
-  const data = await api<{ students: User[] }>('/api/admin/students');
-  students.value = data.students;
+  loading.value = true;
+  error.value = '';
+  try {
+    const data = await api<{ students: User[] }>('/api/admin/students');
+    students.value = data.students;
+  } catch (e: any) {
+    error.value = e.message || '加载失败';
+  } finally {
+    loading.value = false;
+  }
 }
 
-function getDailyPct(s: User) {
-  const limit = s.quota?.dailyTokenLimit || 500000;
-  return limit > 0 ? Math.round((s.dailyTokensUsed / limit) * 100) : 0;
+function usagePct(used: number, limit: number) {
+  if (!limit) return 0;
+  return Math.min(100, Math.round((used / limit) * 100));
 }
 
-function getWeeklyPct(s: User) {
-  const limit = s.quota?.weeklyTokenLimit || 2000000;
-  return limit > 0 ? Math.round((s.weeklyTokensUsed / limit) * 100) : 0;
-}
-
-function getBadgeClass(pct: number) {
-  if (pct >= 90) return 'badge-danger';
-  if (pct >= 70) return 'badge-warn';
-  return 'badge-ok';
+function barColor(pct: number) {
+  if (pct >= 90) return 'var(--danger)';
+  if (pct >= 70) return 'var(--secondary)';
+  return 'var(--primary)';
 }
 
 function openQuotaEditor(s: User) {
@@ -50,55 +62,62 @@ function openQuotaEditor(s: User) {
     studentId: s.studentId,
     daily: s.quota?.dailyTokenLimit || 500000,
     weekly: s.quota?.weeklyTokenLimit || 2000000,
+    dsDaily: s.deepseekQuota?.dailyCostLimitCny ?? 5,
+    dsWeekly: s.deepseekQuota?.weeklyCostLimitCny ?? 20,
+    mmDaily: s.minimaxQuota?.dailyRequestLimit ?? 100,
+    mmWeekly: s.minimaxQuota?.weeklyRequestLimit ?? 400,
   };
   showQuotaEditor.value = true;
 }
 
 function openAddDialog() {
-  addForm.value = {
-    studentId: '',
-    name: '',
-    password: '',
-    dailyTokenLimit: 500000,
-    weeklyTokenLimit: 2000000,
-  };
+  addForm.value = { studentId: '', name: '', password: '', dailyTokenLimit: 500000, weeklyTokenLimit: 2000000 };
+  addError.value = '';
   showAddDialog.value = true;
 }
 
 function openResetDialog(s: User) {
-  resetForm.value = {
-    id: s._id,
-    studentId: s.studentId,
-    newPassword: '',
-  };
+  resetForm.value = { id: s._id, studentId: s.studentId, newPassword: '' };
+  resetError.value = '';
   showResetDialog.value = true;
 }
 
-async function handleQuotaSave(daily: number, weekly: number) {
+async function handleQuotaSave(daily: number, weekly: number, dsDaily: number, dsWeekly: number, mmDaily: number, mmWeekly: number) {
   if (!editingStudent.value) return;
   await api(`/api/admin/students/${editingStudent.value.id}/quota`, {
     method: 'PUT',
-    body: JSON.stringify({ dailyTokenLimit: daily, weeklyTokenLimit: weekly }),
+    body: JSON.stringify({
+      dailyTokenLimit: daily, weeklyTokenLimit: weekly,
+      deepseekDailyCostLimitCny: dsDaily, deepseekWeeklyCostLimitCny: dsWeekly,
+      minimaxDailyRequestLimit: mmDaily, minimaxWeeklyRequestLimit: mmWeekly,
+    }),
   });
   showQuotaEditor.value = false;
   loadStudents();
 }
 
 async function handleAddStudent() {
-  await api('/api/admin/students', {
-    method: 'POST',
-    body: JSON.stringify(addForm.value),
-  });
-  showAddDialog.value = false;
-  await loadStudents();
+  addError.value = '';
+  try {
+    await api('/api/admin/students', { method: 'POST', body: JSON.stringify(addForm.value) });
+    showAddDialog.value = false;
+    await loadStudents();
+  } catch (e: any) {
+    addError.value = e.message || '创建失败';
+  }
 }
 
 async function handleResetPassword() {
-  await api(`/api/admin/students/${resetForm.value.id}/reset-password`, {
-    method: 'PUT',
-    body: JSON.stringify({ newPassword: resetForm.value.newPassword }),
-  });
-  showResetDialog.value = false;
+  resetError.value = '';
+  try {
+    await api(`/api/admin/students/${resetForm.value.id}/reset-password`, {
+      method: 'PUT',
+      body: JSON.stringify({ newPassword: resetForm.value.newPassword }),
+    });
+    showResetDialog.value = false;
+  } catch (e: any) {
+    resetError.value = e.message || '重置失败';
+  }
 }
 
 onMounted(loadStudents);
@@ -111,45 +130,85 @@ onMounted(loadStudents);
       <button class="btn primary btn-sm" @click="openAddDialog">添加学生</button>
     </div>
 
+    <div v-if="error" class="state-msg err">{{ error }}</div>
+
     <div class="card">
       <table>
         <thead>
           <tr>
-            <th>学号</th>
-            <th>姓名</th>
-            <th>Key 前缀</th>
-            <th>MiMo 日限额</th>
-            <th>MiMo 日已用</th>
-            <th>MiMo 周限额</th>
-            <th>MiMo 周已用</th>
-            <th>MiniMax 日调用</th>
-            <th>MiniMax 周调用</th>
+            <th>学号 / 姓名</th>
+            <th>Key</th>
+            <th>MiMo Token</th>
+            <th>DeepSeek 费用</th>
+            <th>MiniMax 调用</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in students" :key="s._id">
-            <td>{{ escapeHtml(s.studentId) }}</td>
-            <td>{{ escapeHtml(s.name) || '-' }}</td>
-            <td><code>{{ escapeHtml(s.apiKeyPrefix) }}...</code></td>
-            <td>{{ fmtTokens(s.quota?.dailyTokenLimit || 500000) }}</td>
+          <tr v-if="loading">
+            <td colspan="6" class="empty">加载中…</td>
+          </tr>
+          <tr v-else v-for="s in students" :key="s._id">
             <td>
-              <span :class="['badge', getBadgeClass(getDailyPct(s))]">
-                {{ fmtTokens(s.dailyTokensUsed) }} ({{ getDailyPct(s) }}%)
-              </span>
+              <div class="cell-primary">{{ escapeHtml(s.studentId) }}</div>
+              <div class="cell-sub">{{ escapeHtml(s.name) || '—' }}</div>
             </td>
-            <td>{{ fmtTokens(s.quota?.weeklyTokenLimit || 2000000) }}</td>
+            <td><code>{{ escapeHtml(s.apiKeyPrefix) }}…</code></td>
             <td>
-              <span :class="['badge', getBadgeClass(getWeeklyPct(s))]">
-                {{ fmtTokens(s.weeklyTokensUsed) }} ({{ getWeeklyPct(s) }}%)
-              </span>
+              <div class="usage-row">
+                <span class="usage-label">日</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.dailyTokensUsed, s.quota?.dailyTokenLimit || 500000) + '%', background: barColor(usagePct(s.dailyTokensUsed, s.quota?.dailyTokenLimit || 500000)) }"></span>
+                </div>
+                <span class="usage-val">{{ fmtTokens(s.dailyTokensUsed) }} / {{ fmtTokens(s.quota?.dailyTokenLimit || 500000) }}</span>
+              </div>
+              <div class="usage-row">
+                <span class="usage-label">周</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.weeklyTokensUsed, s.quota?.weeklyTokenLimit || 2000000) + '%', background: barColor(usagePct(s.weeklyTokensUsed, s.quota?.weeklyTokenLimit || 2000000)) }"></span>
+                </div>
+                <span class="usage-val">{{ fmtTokens(s.weeklyTokensUsed) }} / {{ fmtTokens(s.quota?.weeklyTokenLimit || 2000000) }}</span>
+              </div>
             </td>
-            <td>{{ fmtTokens(s.minimaxDailyRequestsUsed || 0) }}</td>
-            <td>{{ fmtTokens(s.minimaxWeeklyRequestsUsed || 0) }}</td>
             <td>
+              <div class="usage-row">
+                <span class="usage-label">日</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.deepseekDailyCostCny || 0, s.deepseekQuota?.dailyCostLimitCny ?? 5) + '%', background: barColor(usagePct(s.deepseekDailyCostCny || 0, s.deepseekQuota?.dailyCostLimitCny ?? 5)) }"></span>
+                </div>
+                <span class="usage-val">¥{{ (s.deepseekDailyCostCny || 0).toFixed(2) }} / ¥{{ (s.deepseekQuota?.dailyCostLimitCny ?? 5).toFixed(2) }}</span>
+              </div>
+              <div class="usage-row">
+                <span class="usage-label">周</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.deepseekWeeklyCostCny || 0, s.deepseekQuota?.weeklyCostLimitCny ?? 20) + '%', background: barColor(usagePct(s.deepseekWeeklyCostCny || 0, s.deepseekQuota?.weeklyCostLimitCny ?? 20)) }"></span>
+                </div>
+                <span class="usage-val">¥{{ (s.deepseekWeeklyCostCny || 0).toFixed(2) }} / ¥{{ (s.deepseekQuota?.weeklyCostLimitCny ?? 20).toFixed(2) }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="usage-row">
+                <span class="usage-label">日</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.minimaxDailyRequestsUsed || 0, s.minimaxQuota?.dailyRequestLimit ?? 100) + '%', background: barColor(usagePct(s.minimaxDailyRequestsUsed || 0, s.minimaxQuota?.dailyRequestLimit ?? 100)) }"></span>
+                </div>
+                <span class="usage-val">{{ s.minimaxDailyRequestsUsed || 0 }} / {{ s.minimaxQuota?.dailyRequestLimit ?? 100 }}</span>
+              </div>
+              <div class="usage-row">
+                <span class="usage-label">周</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.minimaxWeeklyRequestsUsed || 0, s.minimaxQuota?.weeklyRequestLimit ?? 400) + '%', background: barColor(usagePct(s.minimaxWeeklyRequestsUsed || 0, s.minimaxQuota?.weeklyRequestLimit ?? 400)) }"></span>
+                </div>
+                <span class="usage-val">{{ s.minimaxWeeklyRequestsUsed || 0 }} / {{ s.minimaxQuota?.weeklyRequestLimit ?? 400 }}</span>
+              </div>
+            </td>
+            <td class="actions-cell">
               <button class="btn btn-sm" @click="openQuotaEditor(s)">调额度</button>
               <button class="btn btn-sm secondary" @click="openResetDialog(s)">重置密码</button>
             </td>
+          </tr>
+          <tr v-if="!loading && students.length === 0">
+            <td colspan="6" class="empty">暂无学生数据</td>
           </tr>
         </tbody>
       </table>
@@ -161,6 +220,10 @@ onMounted(loadStudents);
       :student-id="editingStudent.studentId"
       :current-daily="editingStudent.daily"
       :current-weekly="editingStudent.weekly"
+      :current-ds-daily="editingStudent.dsDaily"
+      :current-ds-weekly="editingStudent.dsWeekly"
+      :current-mm-daily="editingStudent.mmDaily"
+      :current-mm-weekly="editingStudent.mmWeekly"
       @close="showQuotaEditor = false"
       @save="handleQuotaSave"
     />
@@ -169,6 +232,7 @@ onMounted(loadStudents);
       <div v-if="showAddDialog" class="modal-overlay" @click.self="showAddDialog = false">
         <div class="modal">
           <h3>添加学生</h3>
+          <div v-if="addError" class="form-error">{{ addError }}</div>
           <div class="form-grid">
             <label>
               <span>学号</span>
@@ -204,6 +268,7 @@ onMounted(loadStudents);
         <div class="modal">
           <h3>重置密码</h3>
           <p class="muted">学号：{{ resetForm.studentId }}</p>
+          <div v-if="resetError" class="form-error">{{ resetError }}</div>
           <div class="field">
             <label>新密码</label>
             <input v-model="resetForm.newPassword" class="input" type="password" minlength="6" />
@@ -219,7 +284,6 @@ onMounted(loadStudents);
 </template>
 
 <style>
-/* Teleported overlay — must be global since scoped styles don't follow Teleport */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -247,17 +311,56 @@ onMounted(loadStudents);
   overflow: auto;
 }
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
 th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px var(--mono); }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-.badge-ok { background: var(--primary-light); color: var(--primary); }
-.badge-warn { background: var(--secondary-light); color: var(--secondary); }
-.badge-danger { background: #fae4e4; color: var(--danger); }
+.cell-primary { font-weight: 600; }
+.cell-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.usage-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.usage-row:last-child { margin-bottom: 0; }
+.usage-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--light-muted);
+  width: 12px;
+  flex-shrink: 0;
+}
+.mini-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--primary-light);
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 48px;
+}
+.mini-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width .3s;
+}
+.usage-val { font-size: 11px; color: var(--muted); white-space: nowrap; font-family: var(--mono); }
+.actions-cell { white-space: nowrap; }
 .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--bg); color: var(--text); }
-.btn-sm { padding: 4px 12px; font-size: 12px; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
 .btn.primary { background: var(--primary); color: #fff; }
-.btn.secondary { margin-left: 8px; background: var(--secondary-light); color: var(--secondary); }
+.btn.secondary { margin-left: 6px; background: var(--secondary-light); color: var(--secondary); }
+.state-msg { font-size: 13px; margin-bottom: 12px; }
+.state-msg.err { color: var(--danger); }
+.form-error {
+  background: rgba(199,91,91,.08);
+  color: var(--danger);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.empty { text-align: center; color: var(--muted); padding: 40px; }
 .modal {
   width: min(560px, calc(100vw - 24px));
   background: var(--surface);
@@ -281,23 +384,15 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px v
   text-transform: uppercase;
   letter-spacing: .04em;
 }
-.form-grid label:first-child {
-  grid-column: 1 / -1;
-}
+.form-grid label:first-child { grid-column: 1 / -1; }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 20px;
 }
-.muted {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 0 0 12px;
-}
+.muted { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
 @media (max-width: 900px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+  .form-grid { grid-template-columns: 1fr; }
 }
 </style>

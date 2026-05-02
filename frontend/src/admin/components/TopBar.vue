@@ -1,26 +1,25 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '../../student/stores/auth';
+import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
 const auth = useAuthStore();
 
 function handleLogout() {
   auth.logout();
-  router.push('/');
+  router.push('/admin/login');
 }
 </script>
 
 <template>
   <div class="topbar">
-    <div class="brand" @click="router.push('/')">
+    <div class="brand" @click="router.push('/admin')">
       <div class="brand-mark">A</div>
       <div class="brand-name">API Share</div>
     </div>
     <div class="nav">
-      <button @click="router.push('/')">首页</button>
-      <button @click="router.push('/overview')">控制台</button>
-      <button v-if="auth.isLoggedIn" @click="handleLogout" class="btn-logout">退出</button>
+      <button @click="router.push('/admin')">管理后台</button>
+      <button @click="handleLogout" class="btn-logout">退出</button>
     </div>
   </div>
 </template>

@@ -1,22 +1,32 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useDashboardStore } from '../stores/dashboard';
-import { fmt, pct } from '@shared/format';
+import { fmt, fmtTokens, pct } from '@shared/format';
 import { baseUrl } from '@shared/api/client';
 import KeyModal from '../components/KeyModal.vue';
 
 const dashboard = useDashboardStore();
 const showKeyModal = ref(false);
 const displayedKey = ref('');
+const loading = ref(false);
+const error = ref('');
 
 const recommended = { id: 'MiniMax-M2.7', provider: 'MiniMax Token Plan' };
 
 async function loadData() {
+  loading.value = true;
+  error.value = '';
+  try {
   await Promise.all([dashboard.loadProfile(), dashboard.loadModels()]);
   const firstModel = dashboard.models.find(m => String(m.provider || '').includes('MiniMax')) || dashboard.models[0];
   if (firstModel) {
     recommended.id = firstModel.id;
     recommended.provider = firstModel.provider;
+  }
+  } catch (e: any) {
+    error.value = e.message || '数据加载失败';
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -52,39 +62,100 @@ onMounted(loadData);
       </div>
     </div>
 
-    <div class="cards" v-if="dashboard.profile">
-      <div class="stat">
-        <div class="stat-label">MiMo 今日 Token</div>
-        <div class="stat-value">{{ fmt(dashboard.profile.dailyTokensUsed) }}</div>
-        <div class="stat-sub">{{ fmt(dashboard.profile.dailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.dailyTokenLimit || 0) }} MiMo tokens</div>
-        <div class="bar"><span :style="{ width: pct(dashboard.profile.dailyTokensUsed, dashboard.profile.quota?.dailyTokenLimit || 0) + '%' }"></span></div>
+    <div v-if="loading" class="state-msg">加载中…</div>
+    <div v-else-if="error" class="state-msg err">{{ error }}</div>
+
+    <div class="provider-cards" v-if="dashboard.profile && !loading">
+      <!-- MiMo Card -->
+      <div class="provider-card">
+        <div class="provider-header">
+          <div class="provider-title">
+            <span class="dot" style="background:#3DB88B"></span>
+            <span>MiMo</span>
+          </div>
+        </div>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-label">今日</div>
+            <div class="metric-value">{{ fmt(dashboard.profile.dailyTokensUsed) }}</div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.dailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.dailyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.dailyTokensUsed, dashboard.profile.quota?.dailyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">本周</div>
+            <div class="metric-value">{{ fmt(dashboard.profile.weeklyTokensUsed) }}</div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.weeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.weeklyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.weeklyTokensUsed, dashboard.profile.quota?.weeklyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
+          </div>
+        </div>
+        <div class="provider-footer">mimo-v2.5-pro · 2x token calculation</div>
       </div>
-      <div class="stat">
-        <div class="stat-label">MiMo 本周 Token</div>
-        <div class="stat-value">{{ fmt(dashboard.profile.weeklyTokensUsed) }}</div>
-        <div class="stat-sub">{{ fmt(dashboard.profile.weeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.weeklyTokenLimit || 0) }} MiMo tokens</div>
-        <div class="bar"><span :style="{ width: pct(dashboard.profile.weeklyTokensUsed, dashboard.profile.quota?.weeklyTokenLimit || 0) + '%', background: 'var(--secondary)' }"></span></div>
+
+      <!-- DeepSeek Card -->
+      <div class="provider-card">
+        <div class="provider-header">
+          <div class="provider-title">
+            <span class="dot" style="background:#4D6BFE"></span>
+            <span>DeepSeek</span>
+          </div>
+        </div>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-label">今日</div>
+            <div class="metric-value">¥{{ (dashboard.profile.deepseekDailyCostCny || 0).toFixed(2) }}</div>
+            <div class="metric-ratio">¥{{ (dashboard.profile.deepseekDailyCostCny || 0).toFixed(4) }} · {{ fmtTokens(dashboard.profile.deepseekDailyTokensUsed) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.deepseekDailyCostCny || 0, dashboard.profile.deepseekQuota?.dailyCostLimitCny || 5) + '%', background: '#4D6BFE' }"></span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">本周</div>
+            <div class="metric-value">¥{{ (dashboard.profile.deepseekWeeklyCostCny || 0).toFixed(2) }}</div>
+            <div class="metric-ratio">¥{{ (dashboard.profile.deepseekWeeklyCostCny || 0).toFixed(4) }} · {{ fmtTokens(dashboard.profile.deepseekWeeklyTokensUsed) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.deepseekWeeklyCostCny || 0, dashboard.profile.deepseekQuota?.weeklyCostLimitCny || 20) + '%', background: '#4D6BFE' }"></span></div>
+          </div>
+        </div>
+        <div class="provider-footer">deepseek-chat · CNY billing</div>
       </div>
-      <div class="stat">
-        <div class="stat-label">MiniMax 今日调用</div>
-        <div class="stat-value">{{ fmt(dashboard.profile.minimaxDailyRequestsUsed) }}</div>
-        <div class="stat-sub">{{ fmt(dashboard.profile.minimaxDailyRequestsUsed) }} / {{ fmt(dashboard.profile.minimaxQuota?.dailyRequestLimit || 0) }} requests</div>
-        <div class="bar"><span :style="{ width: pct(dashboard.profile.minimaxDailyRequestsUsed, dashboard.profile.minimaxQuota?.dailyRequestLimit || 0) + '%', background: '#5f7ea8' }"></span></div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">MiniMax 本周调用</div>
-        <div class="stat-value">{{ fmt(dashboard.profile.minimaxWeeklyRequestsUsed) }}</div>
-        <div class="stat-sub">{{ fmt(dashboard.profile.minimaxWeeklyRequestsUsed) }} / {{ fmt(dashboard.profile.minimaxQuota?.weeklyRequestLimit || 0) }} requests</div>
-        <div class="bar"><span :style="{ width: pct(dashboard.profile.minimaxWeeklyRequestsUsed, dashboard.profile.minimaxQuota?.weeklyRequestLimit || 0) + '%', background: '#8b6a9b' }"></span></div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">API Key</div>
-        <div class="stat-value" style="font-size:18px">{{ dashboard.profile.apiKeyPrefix }}...</div>
-        <div class="stat-sub">完整 Key 只在注册或重置时显示</div>
+
+      <!-- MiniMax Card -->
+      <div class="provider-card">
+        <div class="provider-header">
+          <div class="provider-title">
+            <span class="dot" style="background:#5f7ea8"></span>
+            <span>MiniMax</span>
+          </div>
+        </div>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-label">今日</div>
+            <div class="metric-value">{{ fmt(dashboard.profile.minimaxDailyRequestsUsed) }}</div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.minimaxDailyRequestsUsed) }} / {{ fmt(dashboard.profile.minimaxQuota?.dailyRequestLimit || 0) }} requests</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.minimaxDailyRequestsUsed, dashboard.profile.minimaxQuota?.dailyRequestLimit || 0) + '%', background: '#5f7ea8' }"></span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">本周</div>
+            <div class="metric-value">{{ fmt(dashboard.profile.minimaxWeeklyRequestsUsed) }}</div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.minimaxWeeklyRequestsUsed) }} / {{ fmt(dashboard.profile.minimaxQuota?.weeklyRequestLimit || 0) }} requests</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.minimaxWeeklyRequestsUsed, dashboard.profile.minimaxQuota?.weeklyRequestLimit || 0) + '%', background: '#5f7ea8' }"></span></div>
+          </div>
+        </div>
+        <div class="provider-footer">minimax-ability · request-based</div>
       </div>
     </div>
 
-    <div class="wide-grid">
+    <div class="api-key-card" v-if="dashboard.profile && !loading">
+      <div class="api-key-header">
+        <div class="provider-title">
+          <span class="dot" style="background:#8B5CF6"></span>
+          <span>API Key</span>
+        </div>
+      </div>
+      <div class="api-key-body">
+        <div class="api-key-value">{{ dashboard.profile.apiKeyPrefix }}...</div>
+        <div class="api-key-sub">完整 Key 只在注册或重置时显示</div>
+      </div>
+    </div>
+
+    <div v-if="!loading" class="wide-grid">
       <div class="block">
         <h3>快速配置</h3>
         <div class="code">{{ renderQuickConfig() }}</div>
@@ -95,6 +166,7 @@ onMounted(loadData);
         <button class="btn danger" @click="handleRegenerateKey">重新生成 Key</button>
       </div>
     </div>
+
 
     <KeyModal
       :visible="showKeyModal"
@@ -109,28 +181,128 @@ onMounted(loadData);
 .headline { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 20px; }
 .headline h2 { margin: 0; font: 700 24px var(--serif); }
 .student-meta { color: var(--muted); font: 12px var(--mono); }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; }
-.stat { padding: 16px; background: var(--surface); border-radius: 8px; border-top: 2px solid var(--primary); }
-.stat:nth-child(2) { border-top-color: var(--secondary); }
-.stat:nth-child(3) { border-top-color: #5f7ea8; }
-.stat:nth-child(4) { border-top-color: #8b6a9b; }
-.stat-label { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.stat-value { margin: 8px 0 6px; font: 600 24px var(--mono); }
-.stat-sub { color: var(--muted); font-size: 11px; }
-.bar { height: 5px; background: var(--primary-light); border-radius: 999px; overflow: hidden; margin-top: 10px; }
-.bar span { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
+.provider-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.provider-card {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+}
+
+.provider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.provider-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.metric-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metric {
+  min-width: 0;
+}
+
+.metric-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font: 600 22px var(--mono);
+  margin-bottom: 2px;
+}
+
+.metric-ratio {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.progress-bar {
+  height: 5px;
+  background: #f0f0f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width .3s;
+}
+
+.provider-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.api-key-card {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+
+.api-key-header { margin-bottom: 12px; }
+
+.api-key-value {
+  font: 600 18px var(--mono);
+  margin-bottom: 4px;
+}
+
+.api-key-sub { font-size: 12px; color: var(--muted); }
 .wide-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 18px; }
 .block { padding: 18px; background: var(--surface); border-radius: 8px; margin-bottom: 18px; }
 .block h3 { margin: 0 0 14px; font-size: 14px; }
 .code {
-  background: #2D2D2D;
-  color: #D5CEC4;
+  background: var(--shell);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
   font: 12px/1.7 var(--mono);
   overflow: auto;
   white-space: pre-wrap;
 }
+.state-msg {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 32px 0;
+  text-align: center;
+}
+.state-msg.err { color: var(--danger); }
 @media (max-width: 900px) {
   .cards, .wide-grid { grid-template-columns: 1fr; }
 }

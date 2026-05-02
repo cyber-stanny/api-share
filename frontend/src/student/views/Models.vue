@@ -18,6 +18,8 @@ const publicModelCards = [
   { id: 'mimo-v2.5', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-flash', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-pro', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
 ];
 
 const modelList = computed(() => dashboard.models.length ? dashboard.models : publicModelCards);

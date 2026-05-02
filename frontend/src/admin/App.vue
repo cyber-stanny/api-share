@@ -1,39 +1,47 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
+import TopBar from './components/TopBar.vue';
 import Sidebar from './components/Sidebar.vue';
+import LoginModal from './components/LoginModal.vue';
 import '@shared/styles/tokens.css';
 import '@shared/styles/base.css';
 import '@shared/styles/controls.css';
 
-const route = useRoute();
 const auth = useAuthStore();
-
-const showSidebar = computed(() => auth.isLoggedIn && route.path !== '/login');
 </script>
 
 <template>
   <div class="admin-shell">
-    <template v-if="showSidebar">
-      <Sidebar />
-      <main class="main-content">
-        <router-view />
-      </main>
+    <template v-if="auth.isLoggedIn">
+      <TopBar />
+      <div class="console-body">
+        <Sidebar />
+        <main class="main-content">
+          <router-view />
+        </main>
+      </div>
     </template>
-    <router-view v-else />
+    <LoginModal
+      :visible="!auth.isLoggedIn"
+    />
   </div>
 </template>
 
 <style>
 .admin-shell {
+  width: 100%;
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--shell);
+}
+.console-body {
+  display: flex;
+  flex: 1;
 }
 .main-content {
   flex: 1;
   padding: 24px;
-  overflow: auto;
+  overflow-y: auto;
 }
 </style>
