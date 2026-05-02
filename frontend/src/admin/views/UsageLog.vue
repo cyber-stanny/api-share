@@ -27,6 +27,7 @@ onMounted(loadUsage);
       <div class="filter-row">
         <input
           v-model="filterStudentId"
+          class="input"
           placeholder="按学号筛选"
           @keyup.enter="handleFilter"
         />
@@ -71,24 +72,19 @@ onMounted(loadUsage);
   align-items: center;
   margin-bottom: 20px;
 }
-.page-header h2 { margin: 0; font-size: 20px; }
+.page-header h2 { margin: 0; font: 700 20px var(--serif); }
 .filter-row { display: flex; gap: 8px; align-items: center; }
-.filter-row input {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
+.filter-row .input { width: 180px; }
 .card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+  box-shadow: 0 1px 4px rgba(45,45,45,.06);
 }
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-th { background: #fafafa; font-weight: 600; color: #666; font-size: 12px; }
-code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-.empty { text-align: center; color: #999; padding: 40px; }
-.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px var(--mono); }
+.empty { text-align: center; color: var(--muted); padding: 40px; }
+.btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--bg); color: var(--text); }
 .btn-sm { padding: 4px 12px; font-size: 12px; }
 </style>

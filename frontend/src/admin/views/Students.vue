@@ -108,7 +108,7 @@ onMounted(loadStudents);
   <div class="students-page">
     <div class="page-header">
       <h2>学生列表</h2>
-      <button class="btn btn-primary btn-sm" @click="openAddDialog">添加学生</button>
+      <button class="btn primary btn-sm" @click="openAddDialog">添加学生</button>
     </div>
 
     <div class="card">
@@ -148,7 +148,7 @@ onMounted(loadStudents);
             <td>{{ fmtTokens(s.minimaxWeeklyRequestsUsed || 0) }}</td>
             <td>
               <button class="btn btn-sm" @click="openQuotaEditor(s)">调额度</button>
-              <button class="btn btn-sm btn-secondary" @click="openResetDialog(s)">重置密码</button>
+              <button class="btn btn-sm secondary" @click="openResetDialog(s)">重置密码</button>
             </td>
           </tr>
         </tbody>
@@ -172,28 +172,28 @@ onMounted(loadStudents);
           <div class="form-grid">
             <label>
               <span>学号</span>
-              <input v-model="addForm.studentId" type="text" />
+              <input v-model="addForm.studentId" class="input" type="text" />
             </label>
             <label>
               <span>姓名</span>
-              <input v-model="addForm.name" type="text" />
+              <input v-model="addForm.name" class="input" type="text" />
             </label>
             <label>
               <span>初始密码</span>
-              <input v-model="addForm.password" type="password" />
+              <input v-model="addForm.password" class="input" type="password" />
             </label>
             <label>
               <span>每日 Token 上限</span>
-              <input v-model.number="addForm.dailyTokenLimit" type="number" min="0" />
+              <input v-model.number="addForm.dailyTokenLimit" class="input" type="number" min="0" />
             </label>
             <label>
               <span>每周 Token 上限</span>
-              <input v-model.number="addForm.weeklyTokenLimit" type="number" min="0" />
+              <input v-model.number="addForm.weeklyTokenLimit" class="input" type="number" min="0" />
             </label>
           </div>
           <div class="modal-actions">
             <button class="btn" @click="showAddDialog = false">取消</button>
-            <button class="btn btn-primary" @click="handleAddStudent">创建</button>
+            <button class="btn primary" @click="handleAddStudent">创建</button>
           </div>
         </div>
       </div>
@@ -204,13 +204,13 @@ onMounted(loadStudents);
         <div class="modal">
           <h3>重置密码</h3>
           <p class="muted">学号：{{ resetForm.studentId }}</p>
-          <label class="single-field">
-            <span>新密码</span>
-            <input v-model="resetForm.newPassword" type="password" minlength="6" />
-          </label>
+          <div class="field">
+            <label>新密码</label>
+            <input v-model="resetForm.newPassword" class="input" type="password" minlength="6" />
+          </div>
           <div class="modal-actions">
             <button class="btn" @click="showResetDialog = false">取消</button>
-            <button class="btn btn-primary" @click="handleResetPassword">保存</button>
+            <button class="btn primary" @click="handleResetPassword">保存</button>
           </div>
         </div>
       </div>
@@ -225,29 +225,30 @@ onMounted(loadStudents);
   align-items: center;
   margin-bottom: 20px;
 }
-.page-header h2 { margin: 0; font-size: 20px; }
+.page-header h2 { margin: 0; font: 700 20px var(--serif); }
 .card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+  box-shadow: 0 1px 4px rgba(45,45,45,.06);
   overflow: auto;
 }
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-th { background: #fafafa; font-weight: 600; color: #666; font-size: 12px; }
-code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px var(--mono); }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-.badge-ok { background: #dcfce7; color: #166534; }
-.badge-warn { background: #fef3c7; color: #92400e; }
-.badge-danger { background: #fee2e2; color: #991b1b; }
-.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.badge-ok { background: var(--primary-light); color: var(--primary); }
+.badge-warn { background: var(--secondary-light); color: var(--secondary); }
+.badge-danger { background: #fae4e4; color: var(--danger); }
+.btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--bg); color: var(--text); }
 .btn-sm { padding: 4px 12px; font-size: 12px; }
-.btn-primary { background: #4f46e5; color: #fff; }
-.btn-secondary { margin-left: 8px; background: #e5e7eb; color: #374151; }
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.secondary { margin-left: 8px; background: var(--secondary-light); color: var(--secondary); }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.4);
+  background: rgba(45,40,36,.45);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -255,45 +256,38 @@ code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12p
 }
 .modal {
   width: min(560px, calc(100vw - 24px));
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
-  padding: 24px;
+  padding: 28px;
+  box-shadow: 0 12px 36px rgba(45,45,45,.08);
 }
-.modal h3 { margin: 0 0 16px; }
+.modal h3 { margin: 0 0 16px; font: 700 18px var(--serif); }
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
-.form-grid label,
-.single-field {
+.form-grid label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 12px;
-  color: #666;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
 }
-.form-grid label:first-child,
-.single-field {
+.form-grid label:first-child {
   grid-column: 1 / -1;
-}
-.form-grid input,
-.single-field input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #111827;
 }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 .muted {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 13px;
   margin: 0 0 12px;
 }

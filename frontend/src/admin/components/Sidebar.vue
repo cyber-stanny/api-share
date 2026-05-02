@@ -23,9 +23,9 @@ function navigate(path: string) {
 
 <template>
   <aside class="sidebar">
-    <div class="sidebar-header">
-      <h1>API Share</h1>
-      <button class="logout-btn" @click="auth.logout(); router.push('/login')">退出</button>
+    <div class="sidebar-brand">
+      <div class="brand-mark">A</div>
+      <div class="brand-name">API Share</div>
     </div>
     <nav class="sidebar-nav">
       <button
@@ -38,37 +38,47 @@ function navigate(path: string) {
         {{ item.label }}
       </button>
     </nav>
+    <div class="sidebar-footer">
+      <button class="nav-item logout" @click="auth.logout(); router.push('/login')">退出</button>
+    </div>
   </aside>
 </template>
 
 <style scoped>
 .sidebar {
-  width: 216px;
-  background: #fff;
-  border-right: 1px solid #e5e7eb;
-  flex: 0 0 auto;
-}
-.sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid #eee;
+  width: 220px;
+  flex: 0 0 220px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.sidebar-brand {
+  display: flex;
   align-items: center;
+  gap: 10px;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
 }
-.sidebar-header h1 {
-  font-size: 18px;
-  font-weight: 700;
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  display: grid;
+  place-items: center;
+  font: 700 14px var(--mono);
 }
-.logout-btn {
-  background: transparent;
-  border: none;
-  color: #666;
-  cursor: pointer;
-  font-size: 13px;
+.brand-name {
+  font: 700 16px var(--serif);
 }
-.logout-btn:hover { color: #333; }
 .sidebar-nav {
+  flex: 1;
   padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .nav-item {
   width: 100%;
@@ -76,16 +86,32 @@ function navigate(path: string) {
   background: transparent;
   text-align: left;
   padding: 10px 20px;
-  color: #666;
+  color: var(--muted);
   cursor: pointer;
-  font-size: 14px;
-  border-left: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 3px solid transparent;
+  transition: color .15s, background .15s;
 }
-.nav-item:hover { background: #f9fafb; }
+.nav-item:hover {
+  color: var(--text);
+  background: var(--bg);
+}
 .nav-item.active {
-  color: #4f46e5;
-  background: #eef2ff;
-  border-left-color: #4f46e5;
+  color: var(--primary);
+  background: var(--primary-light);
+  border-left-color: var(--primary);
   font-weight: 600;
+}
+.sidebar-footer {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.logout {
+  color: var(--muted);
+  font-weight: 400;
+}
+.logout:hover {
+  color: var(--danger);
 }
 </style>

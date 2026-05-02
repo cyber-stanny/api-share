@@ -42,7 +42,7 @@ onMounted(loadWhitelist);
   <div class="whitelist-page">
     <div class="page-header">
       <h2>学号白名单</h2>
-      <button class="btn btn-primary btn-sm" @click="showAddDialog = true">添加白名单</button>
+      <button class="btn primary btn-sm" @click="showAddDialog = true">添加白名单</button>
     </div>
 
     <div class="card">
@@ -61,7 +61,7 @@ onMounted(loadWhitelist);
             <td>{{ escapeHtml(w.name) || '-' }}</td>
             <td>{{ fmtDate(w.addedAt) }}</td>
             <td>
-              <button class="btn btn-danger btn-sm" @click="deleteItem(w._id)">删除</button>
+              <button class="btn danger btn-sm" @click="deleteItem(w._id)">删除</button>
             </td>
           </tr>
         </tbody>
@@ -79,7 +79,7 @@ onMounted(loadWhitelist);
           ></textarea>
           <div class="modal-actions">
             <button class="btn" @click="showAddDialog = false">取消</button>
-            <button class="btn btn-primary" @click="addWhitelist">添加</button>
+            <button class="btn primary" @click="addWhitelist">添加</button>
           </div>
         </div>
       </div>
@@ -94,31 +94,38 @@ onMounted(loadWhitelist);
   align-items: center;
   margin-bottom: 20px;
 }
-.page-header h2 { margin: 0; font-size: 20px; }
+.page-header h2 { margin: 0; font: 700 20px var(--serif); }
 .card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+  box-shadow: 0 1px 4px rgba(45,45,45,.06);
 }
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-th { background: #fafafa; font-weight: 600; color: #666; font-size: 12px; }
-.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--bg); color: var(--text); }
 .btn-sm { padding: 4px 12px; font-size: 12px; }
-.btn-primary { background: #4f46e5; color: #fff; }
-.btn-danger { background: #ef4444; color: #fff; }
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.danger { background: #fae4e4; color: var(--danger); }
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.4);
+  background: rgba(45,40,36,.45);
+  backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff; border-radius: 12px; padding: 24px; min-width: 400px;
+  background: var(--surface); border-radius: 12px; padding: 28px; min-width: 400px;
+  box-shadow: 0 12px 36px rgba(45,45,45,.08);
 }
-.modal h3 { margin-bottom: 12px; }
-.hint { font-size: 13px; color: #666; margin-bottom: 8px; }
-.hint code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
-textarea { width: 100%; height: 100px; resize: vertical; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+.modal h3 { margin: 0 0 12px; font: 700 18px var(--serif); }
+.hint { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.hint code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px var(--mono); }
+textarea {
+  width: 100%; height: 100px; resize: vertical; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+  background: var(--bg); color: var(--text);
+}
+textarea:focus { border-color: var(--primary); background: var(--surface); outline: none; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 </style>

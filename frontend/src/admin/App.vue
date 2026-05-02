@@ -29,7 +29,7 @@ const showSidebar = computed(() => auth.isLoggedIn && route.path !== '/login');
 .admin-shell {
   display: flex;
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--shell);
 }
 .main-content {
   flex: 1;

@@ -34,18 +34,18 @@ function handleSave() {
       <div class="modal">
         <h3>调整额度 - {{ studentId }}</h3>
         <div class="form-row">
-          <div class="form-group">
+          <div class="field">
             <label>每日 token 上限</label>
-            <input v-model.number="daily" type="number" />
+            <input v-model.number="daily" class="input" type="number" />
           </div>
-          <div class="form-group">
+          <div class="field">
             <label>每周 token 上限</label>
-            <input v-model.number="weekly" type="number" />
+            <input v-model.number="weekly" class="input" type="number" />
           </div>
         </div>
         <div class="modal-actions">
           <button class="btn" @click="emit('close')">取消</button>
-          <button class="btn btn-primary" @click="handleSave">保存</button>
+          <button class="btn primary" @click="handleSave">保存</button>
         </div>
       </div>
     </div>
@@ -56,24 +56,22 @@ function handleSave() {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.4);
+  background: rgba(45,40,36,.45);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
-  padding: 24px;
+  padding: 28px;
   min-width: 400px;
+  box-shadow: 0 12px 36px rgba(45,45,45,.08);
 }
-.modal h3 { margin-bottom: 16px; }
+.modal h3 { margin: 0 0 16px; font: 700 18px var(--serif); }
 .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
-.form-group { flex: 1; }
-.form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
-.form-group input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+.field { flex: 1; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-.btn-primary { background: #4f46e5; color: #fff; }
 </style>
