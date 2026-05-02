@@ -48,7 +48,8 @@ async function copyKey() {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(45,45,45,.3);
+  background: rgba(45,40,36,.45);
+  backdrop-filter: blur(4px);
   z-index: 40;
 }
 .modal-card { width: min(680px, 100%); padding: 24px; }
