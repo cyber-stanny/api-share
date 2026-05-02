@@ -78,7 +78,7 @@ async function handleAuthSuccess(apiKey?: string) {
 </template>
 
 <style scoped>
-.layout { min-height: calc(100vh - 64px); }
+.layout { min-height: 100vh; }
 .landing {
   display: grid;
   grid-template-columns: minmax(320px, 1fr) minmax(320px, 460px);
