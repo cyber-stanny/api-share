@@ -87,6 +87,17 @@ onMounted(loadWhitelist);
   </div>
 </template>
 
+<style>
+/* Teleported overlay — must be global since scoped styles don't follow Teleport */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(45,40,36,.45);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+</style>
+
 <style scoped>
 .page-header {
   display: flex;
@@ -107,13 +118,6 @@ th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11
 .btn-sm { padding: 4px 12px; font-size: 12px; }
 .btn.primary { background: var(--primary); color: #fff; }
 .btn.danger { background: #fae4e4; color: var(--danger); }
-.modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(45,40,36,.45);
-  backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 100;
-}
 .modal {
   background: var(--surface); border-radius: 12px; padding: 28px; min-width: 400px;
   box-shadow: 0 12px 36px rgba(45,45,45,.08);

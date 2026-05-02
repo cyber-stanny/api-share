@@ -15,7 +15,7 @@ function onOverlayClick(e: MouseEvent) {
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="modal" @click="onOverlayClick">
+    <div v-if="visible" class="modal-overlay" @click="onOverlayClick">
       <div class="panel modal-card">
         <h2 v-if="title" class="panel-title">{{ title }}</h2>
         <slot />
@@ -24,8 +24,9 @@ function onOverlayClick(e: MouseEvent) {
   </Teleport>
 </template>
 
-<style scoped>
-.modal {
+<style>
+/* Teleported overlay — must be global since scoped styles don't follow Teleport */
+.modal-overlay {
   position: fixed;
   inset: 0;
   display: grid;
@@ -35,6 +36,9 @@ function onOverlayClick(e: MouseEvent) {
   backdrop-filter: blur(4px);
   z-index: 40;
 }
+</style>
+
+<style scoped>
 .panel { background: var(--surface); border-radius: 12px; }
 .modal-card {
   width: min(680px, 100%);

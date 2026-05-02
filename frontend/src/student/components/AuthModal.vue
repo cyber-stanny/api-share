@@ -148,7 +148,8 @@ async function handleSubmit() {
   </Teleport>
 </template>
 
-<style scoped>
+<style>
+/* Teleported overlay — must be global since scoped styles don't follow Teleport */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -159,6 +160,9 @@ async function handleSubmit() {
   backdrop-filter: blur(4px);
   z-index: 40;
 }
+</style>
+
+<style scoped>
 .auth-panel {
   width: min(480px, 100%);
   padding: 28px;

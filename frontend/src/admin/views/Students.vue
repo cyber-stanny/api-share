@@ -218,6 +218,20 @@ onMounted(loadStudents);
   </div>
 </template>
 
+<style>
+/* Teleported overlay — must be global since scoped styles don't follow Teleport */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(45,40,36,.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+</style>
+
 <style scoped>
 .page-header {
   display: flex;
@@ -244,16 +258,6 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px v
 .btn-sm { padding: 4px 12px; font-size: 12px; }
 .btn.primary { background: var(--primary); color: #fff; }
 .btn.secondary { margin-left: 8px; background: var(--secondary-light); color: var(--secondary); }
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(45,40,36,.45);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
 .modal {
   width: min(560px, calc(100vw - 24px));
   background: var(--surface);

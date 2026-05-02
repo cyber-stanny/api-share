@@ -52,7 +52,8 @@ function handleSave() {
   </Teleport>
 </template>
 
-<style scoped>
+<style>
+/* Teleported overlay — must be global since scoped styles don't follow Teleport */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -63,6 +64,9 @@ function handleSave() {
   justify-content: center;
   z-index: 100;
 }
+</style>
+
+<style scoped>
 .modal {
   background: var(--surface);
   border-radius: 12px;
