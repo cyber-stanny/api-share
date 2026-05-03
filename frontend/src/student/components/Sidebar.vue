@@ -4,8 +4,13 @@ import { useRoute, useRouter } from 'vue-router';
 const route = useRoute();
 const router = useRouter();
 
+const props = defineProps<{
+  open?: boolean;
+}>();
+
 const emit = defineEmits<{
   logout: [];
+  close: [];
 }>();
 
 const navItems = [
@@ -18,17 +23,22 @@ const navItems = [
 function isActive(path: string) {
   return route.path === path;
 }
+
+function navigate(path: string) {
+  router.push(path);
+  emit('close');
+}
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ open: props.open }">
     <nav class="sidebar-nav">
       <button
         v-for="item in navItems"
         :key="item.path"
         class="nav-item"
         :class="{ active: isActive(item.path) }"
-        @click="router.push(item.path)"
+        @click="navigate(item.path)"
       >
         {{ item.label }}
       </button>
@@ -92,5 +102,22 @@ function isActive(path: string) {
 }
 .logout:hover {
   color: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    height: calc(100vh - 64px);
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: none;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+  }
 }
 </style>

@@ -46,6 +46,7 @@ onMounted(loadWhitelist);
     </div>
 
     <div class="card">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -66,6 +67,7 @@ onMounted(loadWhitelist);
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -110,8 +112,11 @@ onMounted(loadWhitelist);
   background: var(--surface);
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(45,45,45,.06);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
-table { width: 100%; border-collapse: collapse; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
 th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
 th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--bg); color: var(--text); }

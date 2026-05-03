@@ -133,6 +133,7 @@ onMounted(loadStudents);
     <div v-if="error" class="state-msg err">{{ error }}</div>
 
     <div class="card">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -212,6 +213,7 @@ onMounted(loadStudents);
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <QuotaEditor
@@ -309,8 +311,13 @@ onMounted(loadStudents);
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(45,45,45,.06);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
-table { width: 100%; border-collapse: collapse; }
+.table-scroll {
+  overflow-x: auto;
+  min-width: 100%;
+}
+table { width: 100%; border-collapse: collapse; min-width: 800px; }
 th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
 th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px var(--mono); }

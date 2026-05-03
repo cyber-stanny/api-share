@@ -5,6 +5,10 @@ import { useAuthStore } from '../../student/stores/auth';
 const router = useRouter();
 const auth = useAuthStore();
 
+const emit = defineEmits<{
+  'toggle-sidebar': [];
+}>();
+
 function handleLogout() {
   auth.logout();
   router.push('/');
@@ -13,6 +17,11 @@ function handleLogout() {
 
 <template>
   <div class="topbar">
+    <button class="hamburger" @click="emit('toggle-sidebar')">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
     <div class="brand" @click="router.push('/')">
       <div class="brand-mark">A</div>
       <div class="brand-name">API Share</div>
@@ -29,10 +38,10 @@ function handleLogout() {
 .topbar {
   width: 100%;
   height: 64px;
-  padding: 0 34px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   background: rgba(255,255,255,.78);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(14px);
@@ -49,9 +58,45 @@ function handleLogout() {
   font: 700 14px var(--mono);
 }
 .brand-name { font: 700 16px var(--serif); }
-.nav { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 13px; }
+.nav { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 13px; margin-left: auto; }
 .nav button { border: 0; background: transparent; color: inherit; padding: 8px; }
 .nav button:hover { color: var(--primary); }
 .btn-logout { color: var(--muted) !important; }
 .btn-logout:hover { color: var(--danger) !important; }
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  flex-shrink: 0;
+}
+.hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 1px;
+  transition: background 0.2s;
+}
+.hamburger:hover span {
+  background: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+  .nav {
+    gap: 8px;
+  }
+  .nav button {
+    padding: 6px;
+  }
+}
 </style>

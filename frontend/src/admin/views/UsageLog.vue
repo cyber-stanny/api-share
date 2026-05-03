@@ -48,6 +48,7 @@ onMounted(loadUsage);
     <div v-if="error" class="state-msg err">{{ error }}</div>
 
     <div class="card">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -80,6 +81,7 @@ onMounted(loadUsage);
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>
@@ -100,7 +102,7 @@ onMounted(loadUsage);
   box-shadow: 0 1px 4px rgba(45,45,45,.06);
   overflow: auto;
 }
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: collapse; min-width: 800px; }
 th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
 th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px var(--mono); }
@@ -110,6 +112,7 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px v
 .empty { text-align: center; color: var(--muted); padding: 40px; }
 .state-msg { font-size: 13px; margin-bottom: 12px; }
 .state-msg.err { color: var(--danger); }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--bg); color: var(--text); }
 .btn-sm { padding: 4px 12px; font-size: 12px; }
 .btn:disabled { opacity: .6; cursor: default; }

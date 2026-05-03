@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+
 const props = defineProps<{
   visible: boolean;
   apiKey: string;
@@ -9,12 +11,12 @@ const emit = defineEmits<{
   copied: [];
 }>();
 
+const copied = ref(false);
+
 async function copyKey() {
   try {
     await navigator.clipboard.writeText(props.apiKey);
-    emit('copied');
   } catch {
-    // fallback
     const el = document.createElement('textarea');
     el.value = props.apiKey;
     document.body.appendChild(el);
@@ -22,6 +24,9 @@ async function copyKey() {
     document.execCommand('copy');
     document.body.removeChild(el);
   }
+  copied.value = true;
+  emit('copied');
+  setTimeout(() => { copied.value = false; }, 2000);
 }
 </script>
 
@@ -33,7 +38,9 @@ async function copyKey() {
         <p class="panel-sub">完整 Key 只显示这一次。关闭后只能重新生成。</p>
         <div class="saved-key">{{ apiKey }}</div>
         <div class="form-actions">
-          <button class="btn" @click="copyKey">复制 Key</button>
+          <button class="btn" :class="{ success: copied }" @click="copyKey">
+            {{ copied ? '已复制 ✓' : '复制 Key' }}
+          </button>
           <button class="btn primary" @click="emit('close')">我已保存</button>
         </div>
       </div>
@@ -69,4 +76,5 @@ async function copyKey() {
   word-break: break-all;
 }
 .form-actions { display: flex; gap: 12px; margin-top: 20px; }
+.btn.success { background: #3DB88B; color: white; border-color: #3DB88B; }
 </style>

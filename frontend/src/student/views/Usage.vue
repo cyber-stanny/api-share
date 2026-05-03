@@ -143,6 +143,7 @@ onMounted(() => {
         <button class="btn" :disabled="loading" @click="handleFilter">{{ loading ? '查询中…' : '查询' }}</button>
       </div>
       <div v-if="error" class="state-msg err">{{ error }}</div>
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -173,6 +174,7 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>
@@ -290,7 +292,7 @@ onMounted(() => {
   background: #fff;
   font-size: 13px;
 }
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px; }
 th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); }
 th { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 code { background: var(--primary-light); padding: 2px 6px; border-radius: 4px; }
@@ -299,6 +301,7 @@ code { background: var(--primary-light); padding: 2px 6px; border-radius: 4px; }
 .empty { text-align: center; color: var(--muted); padding: 32px; }
 .state-msg { font-size: 13px; padding: 8px 0 12px; }
 .state-msg.err { color: var(--danger); }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 @media (max-width: 900px) {
   .provider-cards { grid-template-columns: 1fr; }
   .metric-group { flex-direction: column; gap: 14px; }

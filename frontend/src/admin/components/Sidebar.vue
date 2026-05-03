@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
 const router = useRouter();
-const auth = useAuthStore();
+
+const props = defineProps<{
+  open?: boolean;
+}>();
+
+const emit = defineEmits<{
+  logout: [];
+  close: [];
+}>();
 
 const navItems = [
   { path: '/students', label: '学生管理' },
@@ -18,11 +25,12 @@ function isActive(path: string) {
 
 function navigate(path: string) {
   router.push(path);
+  emit('close');
 }
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ open: props.open }">
     <nav class="sidebar-nav">
       <button
         v-for="item in navItems"
@@ -35,7 +43,7 @@ function navigate(path: string) {
       </button>
     </nav>
     <div class="sidebar-footer">
-      <button class="nav-item logout" @click="auth.logout()">退出</button>
+      <button class="nav-item logout" @click="emit('logout')">退出</button>
     </div>
   </aside>
 </template>
@@ -93,5 +101,22 @@ function navigate(path: string) {
 }
 .logout:hover {
   color: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    height: calc(100vh - 64px);
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: none;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+  }
 }
 </style>
