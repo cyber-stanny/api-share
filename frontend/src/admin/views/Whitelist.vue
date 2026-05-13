@@ -7,10 +7,22 @@ import type { WhitelistItem } from '@shared/api/types';
 const whitelist = ref<WhitelistItem[]>([]);
 const showAddDialog = ref(false);
 const newIds = ref('');
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(20);
 
 async function loadWhitelist() {
-  const data = await api<{ items: WhitelistItem[] }>('/api/admin/whitelist');
+  const data = await api<{ items: WhitelistItem[]; total: number }>(`/api/admin/whitelist?page=${page.value}&pageSize=${pageSize.value}`);
   whitelist.value = data.items;
+  total.value = data.total;
+}
+
+function prevPage() {
+  if (page.value > 1) { page.value--; loadWhitelist(); }
+}
+
+function nextPage() {
+  if (page.value * pageSize.value < total.value) { page.value++; loadWhitelist(); }
 }
 
 async function addWhitelist() {
@@ -67,6 +79,11 @@ onMounted(loadWhitelist);
           </tr>
         </tbody>
       </table>
+      </div>
+      <div class="pagination">
+        <span class="page-info">第 {{ page }} / {{ Math.ceil(total / pageSize) || 1 }} 页，共 {{ total }} 条</span>
+        <button class="btn btn-sm" :disabled="page <= 1" @click="prevPage">上一页</button>
+        <button class="btn btn-sm" :disabled="page * pageSize >= total" @click="nextPage">下一页</button>
       </div>
     </div>
 
@@ -137,4 +154,6 @@ textarea {
 }
 textarea:focus { border-color: var(--primary); background: var(--surface); outline: none; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.pagination { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.page-info { font-size: 13px; color: var(--muted); margin-right: auto; }
 </style>

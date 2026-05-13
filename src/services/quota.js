@@ -1,5 +1,6 @@
 const { db, _ } = require('../db');
 const config = require('../config');
+const { getBeijingDayStart, getBeijingWeekStart } = require('../utils/dateParams');
 
 const locks = new Map();
 
@@ -27,18 +28,11 @@ const TOKEN_PROVIDERS = {
 };
 
 function getDayStart() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return getBeijingDayStart();
 }
 
 function getWeekStart() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return getBeijingWeekStart();
 }
 
 function toCounterNumber(value) {

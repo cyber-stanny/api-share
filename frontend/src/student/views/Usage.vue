@@ -3,12 +3,29 @@ import { onMounted, ref } from 'vue';
 import { useDashboardStore } from '../stores/dashboard';
 import { fmt, fmtDate, fmtTokens, pct } from '@shared/format';
 import { escapeHtml } from '@shared/api/client';
+import DateRangePicker from '@shared/components/DateRangePicker.vue';
+import { getShanghaiTodayRange } from '@shared/timeRange';
 
 const dashboard = useDashboardStore();
 const provider = ref('');
 const model = ref('');
+const startDate = ref('');
+const endDate = ref('');
+const groupBy = ref<'day' | 'week' | 'month' | 'all'>('day');
 const loading = ref(false);
 const error = ref('');
+
+function setTodayRange() {
+  const range = getShanghaiTodayRange();
+  startDate.value = range.startDate;
+  endDate.value = range.endDate;
+}
+
+function showProviderToday(nextProvider: string) {
+  provider.value = nextProvider;
+  setTodayRange();
+  handleFilter();
+}
 
 function getBadgeClass(status: number): string {
   return Number(status) >= 400 ? 'badge err' : 'badge';
@@ -18,10 +35,16 @@ async function handleFilter() {
   loading.value = true;
   error.value = '';
   try {
-    await dashboard.loadUsage({
+    const filters = {
       provider: provider.value || undefined,
       model: model.value.trim() || undefined,
-    });
+      startDate: startDate.value || undefined,
+      endDate: endDate.value || undefined,
+    };
+    await Promise.all([
+      dashboard.loadUsage(filters),
+      dashboard.loadUsageStats({ ...filters, groupBy: groupBy.value }),
+    ]);
   } catch (e: any) {
     error.value = e.message || '加载失败';
   } finally {
@@ -31,6 +54,11 @@ async function handleFilter() {
 
 function mimiPct(current: number, limit: number) {
   return pct(current, limit);
+}
+
+function setGroupBy(nextGroupBy: typeof groupBy.value) {
+  groupBy.value = nextGroupBy;
+  handleFilter();
 }
 
 onMounted(() => {
@@ -50,7 +78,7 @@ onMounted(() => {
             <span class="dot" style="background:#3DB88B"></span>
             <span>MiMo</span>
           </div>
-          <a href="#" class="detail-link" @click.prevent="provider='mimo';handleFilter()">查看详情 →</a>
+          <a href="#" class="detail-link" @click.prevent="showProviderToday('mimo')">查看详情 →</a>
         </div>
         <div class="metric-group">
           <div class="metric">
@@ -76,7 +104,7 @@ onMounted(() => {
             <span class="dot" style="background:#4D6BFE"></span>
             <span>DeepSeek</span>
           </div>
-          <a href="#" class="detail-link" @click.prevent="provider='deepseek';handleFilter()">查看详情 →</a>
+          <a href="#" class="detail-link" @click.prevent="showProviderToday('deepseek')">查看详情 →</a>
         </div>
         <div class="metric-group">
           <div class="metric">
@@ -102,7 +130,7 @@ onMounted(() => {
             <span class="dot" style="background:#5f7ea8"></span>
             <span>MiniMax</span>
           </div>
-          <a href="#" class="detail-link" @click.prevent="provider='minimax';handleFilter()">查看详情 →</a>
+          <a href="#" class="detail-link" @click.prevent="showProviderToday('minimax')">查看详情 →</a>
         </div>
         <div class="metric-group">
           <div class="metric">
@@ -122,10 +150,20 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Usage Logs -->
+    <!-- Usage Stats -->
     <div class="block">
-      <h3>调用日志</h3>
-      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">仅展示近三天的调用记录。</p>
+      <div class="block-title-row">
+        <div>
+          <h3>历史统计</h3>
+          <p>按天保存长期汇总，可切换为周、月或累计视图。</p>
+        </div>
+        <div class="segment">
+          <button :class="{ active: groupBy === 'day' }" type="button" @click="setGroupBy('day')">日</button>
+          <button :class="{ active: groupBy === 'week' }" type="button" @click="setGroupBy('week')">周</button>
+          <button :class="{ active: groupBy === 'month' }" type="button" @click="setGroupBy('month')">月</button>
+          <button :class="{ active: groupBy === 'all' }" type="button" @click="setGroupBy('all')">累计</button>
+        </div>
+      </div>
       <div class="filters">
         <select v-model="provider" class="control">
           <option value="">全部供应商</option>
@@ -140,9 +178,61 @@ onMounted(() => {
           placeholder="按模型筛选"
           @keyup.enter="handleFilter"
         />
+        <DateRangePicker
+          v-model:start-date="startDate"
+          v-model:end-date="endDate"
+          @apply="handleFilter"
+        />
         <button class="btn" :disabled="loading" @click="handleFilter">{{ loading ? '查询中…' : '查询' }}</button>
       </div>
       <div v-if="error" class="state-msg err">{{ error }}</div>
+      <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>周期</th>
+            <th>请求数</th>
+            <th>成功</th>
+            <th>失败</th>
+            <th>Tokens</th>
+            <th>计费量</th>
+            <th>金额</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="dashboard.usageStats?.summary && dashboard.usageStats.rows.length > 1" class="summary-row">
+            <td>合计</td>
+            <td>{{ fmt(dashboard.usageStats.summary.requests) }}</td>
+            <td>{{ fmt(dashboard.usageStats.summary.successRequests) }}</td>
+            <td>{{ fmt(dashboard.usageStats.summary.errorRequests) }}</td>
+            <td>{{ fmt(dashboard.usageStats.summary.totalTokens) }}</td>
+            <td>{{ fmt(dashboard.usageStats.summary.billingUnits) }}</td>
+            <td>{{ dashboard.usageStats.summary.billingCostCny ? `¥${dashboard.usageStats.summary.billingCostCny.toFixed(4)}` : '-' }}</td>
+          </tr>
+          <tr v-for="r in dashboard.usageStats?.rows || []" :key="r.periodKey">
+            <td>{{ r.label }}</td>
+            <td>{{ fmt(r.requests) }}</td>
+            <td>{{ fmt(r.successRequests) }}</td>
+            <td>{{ fmt(r.errorRequests) }}</td>
+            <td>{{ fmt(r.totalTokens) }}</td>
+            <td>{{ fmt(r.billingUnits) }}</td>
+            <td>{{ r.billingCostCny ? `¥${r.billingCostCny.toFixed(4)}` : '-' }}</td>
+          </tr>
+          <tr v-if="loading">
+            <td colspan="7" class="empty">加载中…</td>
+          </tr>
+          <tr v-else-if="(dashboard.usageStats?.rows || []).length === 0">
+            <td colspan="7" class="empty">暂无统计数据</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Usage Logs -->
+    <div class="block">
+      <h3>调用日志</h3>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">仅展示近七天的调用明细。</p>
       <div class="table-scroll">
       <table>
         <thead>
@@ -278,8 +368,39 @@ onMounted(() => {
 
 .block { padding: 18px; background: var(--surface); border-radius: 8px; margin-bottom: 18px; }
 .block h3 { margin: 0 0 14px; font-size: 14px; }
+.block-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.block-title-row h3 { margin-bottom: 6px; }
+.block-title-row p { margin: 0; color: var(--muted); font-size: 13px; }
+.segment {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+.segment button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.segment button.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(45,45,45,.08);
+}
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   margin-bottom: 14px;
@@ -295,6 +416,7 @@ onMounted(() => {
 table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px; }
 th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); }
 th { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.summary-row td { font-weight: 700; background: var(--bg); }
 code { background: var(--primary-light); padding: 2px 6px; border-radius: 4px; }
 .badge { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 11px; background: var(--primary-light); color: var(--primary); }
 .badge.err { background: rgba(199,91,91,.1); color: var(--danger); }
@@ -305,6 +427,7 @@ code { background: var(--primary-light); padding: 2px 6px; border-radius: 4px; }
 @media (max-width: 900px) {
   .provider-cards { grid-template-columns: 1fr; }
   .metric-group { flex-direction: column; gap: 14px; }
+  .block-title-row { flex-direction: column; }
   .filters { flex-direction: column; align-items: stretch; }
   .control { min-width: 0; }
 }

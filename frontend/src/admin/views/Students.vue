@@ -8,6 +8,9 @@ import QuotaEditor from '../components/QuotaEditor.vue';
 const students = ref<User[]>([]);
 const loading = ref(false);
 const error = ref('');
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(100);
 const showQuotaEditor = ref(false);
 const editingStudent = ref<{
   id: string; studentId: string;
@@ -36,13 +39,22 @@ async function loadStudents() {
   loading.value = true;
   error.value = '';
   try {
-    const data = await api<{ students: User[] }>('/api/admin/students');
+    const data = await api<{ students: User[]; total: number }>(`/api/admin/students?page=${page.value}&pageSize=${pageSize.value}`);
     students.value = data.students;
+    total.value = data.total;
   } catch (e: any) {
     error.value = e.message || '加载失败';
   } finally {
     loading.value = false;
   }
+}
+
+function prevPage() {
+  if (page.value > 1) { page.value--; loadStudents(); }
+}
+
+function nextPage() {
+  if (page.value * pageSize.value < total.value) { page.value++; loadStudents(); }
 }
 
 function usagePct(used: number, limit: number) {
@@ -213,6 +225,11 @@ onMounted(loadStudents);
           </tr>
         </tbody>
       </table>
+      </div>
+      <div class="pagination">
+        <span class="page-info">第 {{ page }} / {{ Math.ceil(total / pageSize) || 1 }} 页，共 {{ total }} 条</span>
+        <button class="btn btn-sm" :disabled="page <= 1" @click="prevPage">上一页</button>
+        <button class="btn btn-sm" :disabled="page * pageSize >= total" @click="nextPage">下一页</button>
       </div>
     </div>
 
@@ -399,6 +416,8 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px v
   margin-top: 20px;
 }
 .muted { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.pagination { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.page-info { font-size: 13px; color: var(--muted); margin-right: auto; }
 @media (max-width: 900px) {
   .form-grid { grid-template-columns: 1fr; }
 }

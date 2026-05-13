@@ -7,7 +7,9 @@ const { adminAuth } = require('../middleware/adminAuth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getUpstreamLimiterMetrics } = require('../services/upstreamLimiter');
-const { getUsageSummary } = require('../services/quota');
+const { getUsageSummary, getOrCreateCounter } = require('../services/quota');
+const { queryUsageStats } = require('../services/usageStats');
+const { parseBeijingDateParam } = require('../utils/dateParams');
 const router = express.Router();
 
 const adminLoginLimiter = createRateLimiter({
@@ -38,12 +40,23 @@ function parseTokenLimit(value, fieldName) {
 }
 
 function parseDateParam(value, fieldName) {
-  if (!value) return { value: null };
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return { error: `${fieldName} 必须是有效日期` };
+  return parseBeijingDateParam(value, fieldName);
+}
+
+function validateUsageFilters({ studentId, model, provider, groupBy }) {
+  if (studentId && String(studentId).length > 64) {
+    return 'studentId 不能超过 64 个字符';
   }
-  return { value: date };
+  if (model && String(model).length > 128) {
+    return 'model 不能超过 128 个字符';
+  }
+  if (provider && !['mimo', 'minimax', 'deepseek'].includes(provider)) {
+    return 'provider 只支持 mimo / minimax / deepseek';
+  }
+  if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
+    return 'groupBy 只支持 day / week / month / all';
+  }
+  return null;
 }
 
 function isValidShortText(value, maxLength) {
@@ -100,14 +113,9 @@ router.get('/students', adminAuth, async (req, res) => {
       .limit(pageSize)
       .get();
 
-    // 批量查 token 用量
+    // 批量查 token 用量，读取前先按北京时间校准日/周计数。
     const studentsWithUsage = await Promise.all(students.map(async (s) => {
-      const { data: counters } = await db.collection('token_counters')
-        .where({ studentId: s.studentId })
-        .limit(1)
-        .get();
-
-      const counter = counters && counters.length > 0 ? counters[0] : null;
+      const counter = await getOrCreateCounter(s.studentId);
       const usage = getUsageSummary(counter || {});
 
       return {
@@ -372,7 +380,7 @@ router.delete('/whitelist/:id', adminAuth, async (req, res) => {
 // 用量统计
 router.get('/usage', adminAuth, async (req, res) => {
   try {
-    const { studentId, startDate, endDate, model } = req.query;
+    const { studentId, startDate, endDate, model, provider } = req.query;
     const pageParams = parsePageParams(req.query, 50);
     if (pageParams.error) return error(res, pageParams.error);
     const { page, pageSize } = pageParams;
@@ -384,16 +392,13 @@ router.get('/usage', adminAuth, async (req, res) => {
     if (start.value && end.value && start.value > end.value) {
       return error(res, 'startDate 不能晚于 endDate');
     }
-    if (studentId && String(studentId).length > 64) {
-      return error(res, 'studentId 不能超过 64 个字符');
-    }
-    if (model && String(model).length > 128) {
-      return error(res, 'model 不能超过 128 个字符');
-    }
+    const filterError = validateUsageFilters({ studentId, model, provider });
+    if (filterError) return error(res, filterError);
 
     const conditions = [];
     if (studentId) conditions.push({ studentId });
     if (model) conditions.push({ model });
+    if (provider) conditions.push({ billingProvider: provider });
     if (start.value) conditions.push({ createdAt: _.gte(start.value) });
     if (end.value) conditions.push({ createdAt: _.lte(end.value) });
 
@@ -409,6 +414,37 @@ router.get('/usage', adminAuth, async (req, res) => {
     return success(res, { records, total, page, pageSize });
   } catch (err) {
     console.error('Usage query error:', err);
+    return error(res, '查询失败', 500);
+  }
+});
+
+// 历史用量统计（按日汇总，可聚合为周/月/累计）
+router.get('/usage/stats', adminAuth, async (req, res) => {
+  try {
+    const { studentId, startDate, endDate, model, provider, groupBy = 'day' } = req.query;
+    const filterError = validateUsageFilters({ studentId, model, provider, groupBy });
+    if (filterError) return error(res, filterError);
+
+    const start = parseDateParam(startDate, 'startDate');
+    if (start.error) return error(res, start.error);
+    const end = parseDateParam(endDate, 'endDate');
+    if (end.error) return error(res, end.error);
+    if (start.value && end.value && start.value > end.value) {
+      return error(res, 'startDate 不能晚于 endDate');
+    }
+
+    const stats = await queryUsageStats({
+      studentId,
+      provider,
+      model,
+      startDate: start.value,
+      endDate: end.value,
+      groupBy,
+    });
+
+    return success(res, stats);
+  } catch (err) {
+    console.error('Usage stats query error:', err);
     return error(res, '查询失败', 500);
   }
 });

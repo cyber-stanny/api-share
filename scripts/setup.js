@@ -13,6 +13,7 @@ const COLLECTIONS = [
   'whitelist',
   'upstreams',
   'usage_records',
+  'usage_daily_stats',
   'token_counters',
 ];
 

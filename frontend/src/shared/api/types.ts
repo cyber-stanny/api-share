@@ -40,6 +40,27 @@ export interface UsageRecord {
   createdAt: string;
 }
 
+export interface UsageStatsRow {
+  periodKey: string;
+  label: string;
+  requests: number;
+  successRequests: number;
+  errorRequests: number;
+  totalTokens: number;
+  billingUnits: number;
+  billingCostMicroCny: number;
+  billingCostCny: number;
+}
+
+export interface UsageStatsResponse {
+  groupBy: 'day' | 'week' | 'month' | 'all';
+  rows: UsageStatsRow[];
+  summary: UsageStatsRow;
+  firstDateKey: string | null;
+  lastDateKey: string | null;
+  truncated: boolean;
+}
+
 export interface Upstream {
   _id: string;
   name: string;

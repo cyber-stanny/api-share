@@ -1,6 +1,7 @@
 const { db } = require('../db');
+const { incrementDailyUsageStats } = require('./usageStats');
 
-const RETENTION_DAYS = 3;
+const RETENTION_DAYS = 7;
 
 // 异步记录调用日志（不阻塞响应）
 async function recordUsage({
@@ -16,6 +17,7 @@ async function recordUsage({
   billingCostCny = 0,
 }) {
   try {
+    const createdAt = new Date();
     await db.collection('usage_records').add({
       studentId,
       model,
@@ -31,7 +33,17 @@ async function recordUsage({
       billingCostMicroCny,
       billingCostCny: billingCostCny || (billingCostMicroCny ? billingCostMicroCny / 1000000 : 0),
       status,
-      createdAt: new Date(),
+      createdAt,
+    });
+    await incrementDailyUsageStats({
+      studentId,
+      model,
+      usage,
+      status,
+      billingProvider,
+      billingUnits,
+      billingCostMicroCny,
+      createdAt,
     });
   } catch (err) {
     console.error('Failed to record usage:', err);

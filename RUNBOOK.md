@@ -12,7 +12,7 @@
 - 上游 API Key 只放在环境变量或数据库中，不写入代码和文档。
 - 白名单只导入本次试运行的学生学号。
 - 默认额度使用保守值，避免单个学生耗尽上游预算。
-- 管理员每天检查 `usage_records`、`token_counters` 和上游余额。
+- 管理员每天检查 `usage_daily_stats`、`token_counters` 和上游余额；需要排查单次请求时再看近 7 天 `usage_records`。
 
 ## 依赖安全状态
 
@@ -72,7 +72,7 @@ curl -H "Authorization: Bearer <ADMIN_JWT>" \
 
 ### 单个学生用量异常
 
-1. 在 `usage_records` 中按 `studentId` 查看最近请求。
+1. 在 `usage_daily_stats` 中按 `studentId` 查看历史汇总；需要定位单次请求时再查近 7 天 `usage_records`。
 2. 在 `users` 中重置或禁用该学生 API Key。
 3. 检查是否有大量 401/429/5xx 或异常模型调用。
 
@@ -80,7 +80,7 @@ curl -H "Authorization: Bearer <ADMIN_JWT>" \
 
 1. 暂停对应 upstream 或降低优先级。
 2. 通知学生暂停使用对应模型。
-3. 检查 `usage_records` 中最近高用量学生。
+3. 检查 `usage_daily_stats` 中最近高用量学生。
 
 ### 服务大量返回“系统繁忙”
 

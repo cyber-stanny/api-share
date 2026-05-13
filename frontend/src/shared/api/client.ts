@@ -42,9 +42,11 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
   if (resolvedToken) authHeaders.Authorization = `Bearer ${resolvedToken}`;
 
   const res = await fetch(getMountPath() + path, {
+    cache: 'no-store',
     ...rest,
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
       ...authHeaders,
       ...(headers || {}),
     },

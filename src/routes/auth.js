@@ -7,7 +7,9 @@ const { studentAuth } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getAvailableModelDetails } = require('../services/upstream');
-const { getUsageSummary, getDeepSeekCostQuota } = require('../services/quota');
+const { getUsageSummary, getDeepSeekCostQuota, getOrCreateCounter } = require('../services/quota');
+const { queryUsageStats } = require('../services/usageStats');
+const { parseBeijingDateParam } = require('../utils/dateParams');
 
 const router = express.Router();
 
@@ -47,12 +49,20 @@ function parsePageParams(query, defaultPageSize = 20) {
 }
 
 function parseDateParam(value, fieldName) {
-  if (!value) return { value: null };
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return { error: `${fieldName} 必须是有效日期` };
+  return parseBeijingDateParam(value, fieldName);
+}
+
+function validateUsageFilters({ model, provider, groupBy }) {
+  if (model && String(model).length > 128) {
+    return 'model 不能超过 128 个字符';
   }
-  return { value: date };
+  if (provider && !['mimo', 'minimax', 'deepseek'].includes(provider)) {
+    return 'provider 只支持 mimo / minimax / deepseek';
+  }
+  if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
+    return 'groupBy 只支持 day / week / month / all';
+  }
+  return null;
 }
 
 // 学号注册
@@ -235,11 +245,7 @@ router.get('/profile', studentAuth, async (req, res) => {
     }
 
     const user = users[0];
-    const { data: counters } = await db.collection('token_counters')
-      .where({ studentId: req.student.studentId })
-      .limit(1)
-      .get();
-    const counter = counters && counters.length > 0 ? counters[0] : {};
+    const counter = await getOrCreateCounter(req.student.studentId);
     const quota = user.quota || config.defaultQuota;
     const userQuota = user.quota || {};
     const defaultMiniMaxQuota = config.defaultMiniMaxQuota;
@@ -318,6 +324,37 @@ router.get('/usage', studentAuth, async (req, res) => {
     return success(res, { records, total: total || records.length, page, pageSize });
   } catch (err) {
     console.error('Student usage query error:', err);
+    return error(res, '查询失败', 500);
+  }
+});
+
+// 学生自己的历史用量统计（按日汇总，可聚合为周/月/累计）
+router.get('/usage/stats', studentAuth, async (req, res) => {
+  try {
+    const { model, provider, startDate, endDate, groupBy = 'day' } = req.query;
+    const filterError = validateUsageFilters({ model, provider, groupBy });
+    if (filterError) return error(res, filterError);
+
+    const start = parseDateParam(startDate, 'startDate');
+    if (start.error) return error(res, start.error);
+    const end = parseDateParam(endDate, 'endDate');
+    if (end.error) return error(res, end.error);
+    if (start.value && end.value && start.value > end.value) {
+      return error(res, 'startDate 不能晚于 endDate');
+    }
+
+    const stats = await queryUsageStats({
+      studentId: req.student.studentId,
+      provider,
+      model,
+      startDate: start.value,
+      endDate: end.value,
+      groupBy,
+    });
+
+    return success(res, stats);
+  } catch (err) {
+    console.error('Student usage stats query error:', err);
     return error(res, '查询失败', 500);
   }
 });
