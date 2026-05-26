@@ -59,7 +59,6 @@ api-share/
 ├── scripts/
 │   ├── init-admin.js           # 初始化管理员账号
 │   └── seed-upstreams.js       # 初始化上游渠道配置
-├── .github/workflows/deploy.yml  # GitHub Actions 部署
 ├── cloudbaserc.json            # CloudBase 部署配置
 ├── package.json
 └── .env.example                # 环境变量模板
@@ -143,9 +142,9 @@ api-share/
 ### CloudBase 函数部署
 
 1. 在腾讯云创建 CloudBase 环境
-2. 在 GitHub 设置 Secrets: TCB_SECRET_ID, TCB_SECRET_KEY, CLOUDBASE_ENV_ID, JWT_SECRET, ADMIN_INIT_PASSWORD, MIMO_API_KEY, ALIYUN_API_KEY
+2. 在服务器 `.env` 中配置：CLOUDBASE_ENV_ID, JWT_SECRET, ADMIN_INIT_PASSWORD, MIMO_API_KEY, ALIYUN_API_KEY, TENCENT_SECRET_ID, TENCENT_SECRET_KEY
    - 可选：CORS_ORIGINS, PROXY_ENABLED
-3. push 到 main 分支自动部署
+3. 通过 SCP 将代码同步到服务器，在服务器上运行 `npm run deploy`
 4. 首次部署后运行初始化脚本：
    ```bash
    CLOUDBASE_ENV_ID=xxx node scripts/init-admin.js

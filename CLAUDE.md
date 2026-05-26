@@ -31,7 +31,7 @@ CLOUDBASE_ENV_ID=xxx node scripts/init-admin.js
 CLOUDBASE_ENV_ID=xxx node scripts/seed-upstreams.js
 ```
 
-Auto-deploys to CloudBase on push to `main` via GitHub Actions. The workflow installs root and `frontend/` dependencies from lockfiles, logs in with CloudBase secrets, then runs `npm run deploy`. The deploy script builds the Vite frontend, verifies `src/public/index.html`, `src/public/admin.html`, and `src/public/assets/`, stages `src/` plus root package files, and writes a temporary CloudBase config with environment variables.
+Deploys manually to CloudBase via SSH to remote server: SCP code, then run `npm run deploy` on the server. The deploy script builds the Vite frontend, verifies `src/public/index.html`, `src/public/admin.html`, and `src/public/assets/`, stages `src/` plus root package files, and writes a temporary CloudBase config with environment variables.
 
 ## Architecture
 
