@@ -15,8 +15,6 @@ const showQuotaEditor = ref(false);
 const editingStudent = ref<{
   id: string; studentId: string;
   daily: number; weekly: number;
-  dsDaily: number; dsWeekly: number;
-  mmDaily: number; mmWeekly: number;
 } | null>(null);
 const showAddDialog = ref(false);
 const showResetDialog = ref(false);
@@ -74,10 +72,6 @@ function openQuotaEditor(s: User) {
     studentId: s.studentId,
     daily: s.quota?.dailyTokenLimit || 500000,
     weekly: s.quota?.weeklyTokenLimit || 2000000,
-    dsDaily: s.deepseekQuota?.dailyCostLimitCny ?? 5,
-    dsWeekly: s.deepseekQuota?.weeklyCostLimitCny ?? 20,
-    mmDaily: s.minimaxQuota?.dailyRequestLimit ?? 100,
-    mmWeekly: s.minimaxQuota?.weeklyRequestLimit ?? 400,
   };
   showQuotaEditor.value = true;
 }
@@ -94,14 +88,12 @@ function openResetDialog(s: User) {
   showResetDialog.value = true;
 }
 
-async function handleQuotaSave(daily: number, weekly: number, dsDaily: number, dsWeekly: number, mmDaily: number, mmWeekly: number) {
+async function handleQuotaSave(daily: number, weekly: number) {
   if (!editingStudent.value) return;
   await api(`/api/admin/students/${editingStudent.value.id}/quota`, {
     method: 'PUT',
     body: JSON.stringify({
       dailyTokenLimit: daily, weeklyTokenLimit: weekly,
-      deepseekDailyCostLimitCny: dsDaily, deepseekWeeklyCostLimitCny: dsWeekly,
-      minimaxDailyRequestLimit: mmDaily, minimaxWeeklyRequestLimit: mmWeekly,
     }),
   });
   showQuotaEditor.value = false;
@@ -152,14 +144,13 @@ onMounted(loadStudents);
             <th>学号 / 姓名</th>
             <th>Key</th>
             <th>MiMo Token</th>
-            <th>DeepSeek 费用</th>
-            <th>MiniMax 调用</th>
+            <th>Aliyun Token Plan</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="empty">加载中…</td>
+            <td colspan="5" class="empty">加载中…</td>
           </tr>
           <tr v-else v-for="s in students" :key="s._id">
             <td>
@@ -187,32 +178,16 @@ onMounted(loadStudents);
               <div class="usage-row">
                 <span class="usage-label">日</span>
                 <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.deepseekDailyCostCny || 0, s.deepseekQuota?.dailyCostLimitCny ?? 5) + '%', background: barColor(usagePct(s.deepseekDailyCostCny || 0, s.deepseekQuota?.dailyCostLimitCny ?? 5)) }"></span>
+                  <span :style="{ width: usagePct(s.aliyunDailyTokensUsed || 0, s.quota?.dailyTokenLimit || 500000) + '%', background: barColor(usagePct(s.aliyunDailyTokensUsed || 0, s.quota?.dailyTokenLimit || 500000)) }"></span>
                 </div>
-                <span class="usage-val">¥{{ (s.deepseekDailyCostCny || 0).toFixed(2) }} / ¥{{ (s.deepseekQuota?.dailyCostLimitCny ?? 5).toFixed(2) }}</span>
+                <span class="usage-val">{{ fmtTokens(s.aliyunDailyTokensUsed || 0) }} / {{ fmtTokens(s.quota?.dailyTokenLimit || 500000) }}</span>
               </div>
               <div class="usage-row">
                 <span class="usage-label">周</span>
                 <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.deepseekWeeklyCostCny || 0, s.deepseekQuota?.weeklyCostLimitCny ?? 20) + '%', background: barColor(usagePct(s.deepseekWeeklyCostCny || 0, s.deepseekQuota?.weeklyCostLimitCny ?? 20)) }"></span>
+                  <span :style="{ width: usagePct(s.aliyunWeeklyTokensUsed || 0, s.quota?.weeklyTokenLimit || 2000000) + '%', background: barColor(usagePct(s.aliyunWeeklyTokensUsed || 0, s.quota?.weeklyTokenLimit || 2000000)) }"></span>
                 </div>
-                <span class="usage-val">¥{{ (s.deepseekWeeklyCostCny || 0).toFixed(2) }} / ¥{{ (s.deepseekQuota?.weeklyCostLimitCny ?? 20).toFixed(2) }}</span>
-              </div>
-            </td>
-            <td>
-              <div class="usage-row">
-                <span class="usage-label">日</span>
-                <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.minimaxDailyRequestsUsed || 0, s.minimaxQuota?.dailyRequestLimit ?? 100) + '%', background: barColor(usagePct(s.minimaxDailyRequestsUsed || 0, s.minimaxQuota?.dailyRequestLimit ?? 100)) }"></span>
-                </div>
-                <span class="usage-val">{{ s.minimaxDailyRequestsUsed || 0 }} / {{ s.minimaxQuota?.dailyRequestLimit ?? 100 }}</span>
-              </div>
-              <div class="usage-row">
-                <span class="usage-label">周</span>
-                <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.minimaxWeeklyRequestsUsed || 0, s.minimaxQuota?.weeklyRequestLimit ?? 400) + '%', background: barColor(usagePct(s.minimaxWeeklyRequestsUsed || 0, s.minimaxQuota?.weeklyRequestLimit ?? 400)) }"></span>
-                </div>
-                <span class="usage-val">{{ s.minimaxWeeklyRequestsUsed || 0 }} / {{ s.minimaxQuota?.weeklyRequestLimit ?? 400 }}</span>
+                <span class="usage-val">{{ fmtTokens(s.aliyunWeeklyTokensUsed || 0) }} / {{ fmtTokens(s.quota?.weeklyTokenLimit || 2000000) }}</span>
               </div>
             </td>
             <td class="actions-cell">
@@ -221,7 +196,7 @@ onMounted(loadStudents);
             </td>
           </tr>
           <tr v-if="!loading && students.length === 0">
-            <td colspan="6" class="empty">暂无学生数据</td>
+            <td colspan="5" class="empty">暂无学生数据</td>
           </tr>
         </tbody>
       </table>
@@ -239,10 +214,6 @@ onMounted(loadStudents);
       :student-id="editingStudent.studentId"
       :current-daily="editingStudent.daily"
       :current-weekly="editingStudent.weekly"
-      :current-ds-daily="editingStudent.dsDaily"
-      :current-ds-weekly="editingStudent.dsWeekly"
-      :current-mm-daily="editingStudent.mmDaily"
-      :current-mm-weekly="editingStudent.mmWeekly"
       @close="showQuotaEditor = false"
       @save="handleQuotaSave"
     />

@@ -59,8 +59,7 @@ for (const fn of cfg.functions || []) {
     CORS_ORIGINS: value('CORS_ORIGINS', '*'),
     PROXY_ENABLED: value('PROXY_ENABLED', 'true'),
     MIMO_API_KEY: value('MIMO_API_KEY'),
-    MINIMAX_API_KEY: value('MINIMAX_API_KEY'),
-    DEEPSEEK_API_KEY: value('DEEPSEEK_API_KEY'),
+    ALIYUN_API_KEY: value('ALIYUN_API_KEY'),
   };
 }
 

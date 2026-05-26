@@ -1,7 +1,7 @@
 const express = require('express');
 const { apiKeyAuth } = require('../middleware/auth');
 const { findUpstream, getAvailableModelDetails } = require('../services/upstream');
-const { addTokenUsage, checkTokenQuota, checkDeepSeekCostQuota, checkMiniMaxQuota, addMiniMaxRequests } = require('../services/quota');
+const { addTokenUsage, checkTokenQuota } = require('../services/quota');
 const { checkRateLimit, acquireConcurrent, releaseConcurrent } = require('../services/rateLimit');
 const { acquireUpstreamSlot } = require('../services/upstreamLimiter');
 const { recordUsage } = require('../services/usage');
@@ -181,29 +181,15 @@ async function handleProxy(req, res, protocol) {
     }
 
     billingContext = createBillingContext(upstream, model);
-    if (billingContext.billingType === 'requests') {
-      const quotaResult = await checkMiniMaxQuota(req.student.studentId, billingContext.billingUnits);
-      if (!quotaResult.allowed) {
-        res.set('Retry-After', '86400');
-        return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
-      }
-    } else {
-      const quotaResult = billingContext.billingProvider === 'deepseek'
-        ? await checkDeepSeekCostQuota(req.student.studentId)
-        : await checkTokenQuota(req.student.studentId, billingContext.billingProvider);
-      if (!quotaResult.allowed) {
-        res.set('Retry-After', '86400');
-        return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
-      }
+    const quotaResult = await checkTokenQuota(req.student.studentId, billingContext.billingProvider);
+    if (!quotaResult.allowed) {
+      res.set('Retry-After', '86400');
+      return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));
     }
 
     upstreamSlot = await acquireUpstreamSlot(upstream);
     if (!upstreamSlot.allowed) {
       return res.status(429).json(proto.rateLimitMsg(upstreamSlot.reason || '上游繁忙，请稍后再试'));
-    }
-
-    if (billingContext.billingType === 'requests') {
-      await addMiniMaxRequests(req.student.studentId, billingContext.billingUnits);
     }
 
     const requestBody = proto.prepareBody({ ...req.body }, stream);

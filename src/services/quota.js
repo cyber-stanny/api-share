@@ -16,14 +16,12 @@ const TOKEN_PROVIDERS = {
     legacyLastDay: 'lastDayReset',
     legacyLastWeek: 'lastWeekReset',
   },
-  deepseek: {
-    label: 'DeepSeek',
-    daily: 'deepseekDailyTokens',
-    weekly: 'deepseekWeeklyTokens',
-    lastDay: 'lastDeepSeekDayReset',
-    lastWeek: 'lastDeepSeekWeekReset',
-    dailyCost: 'deepseekDailyCostMicroCny',
-    weeklyCost: 'deepseekWeeklyCostMicroCny',
+  aliyun: {
+    label: 'Aliyun',
+    daily: 'aliyunDailyTokens',
+    weekly: 'aliyunWeeklyTokens',
+    lastDay: 'lastAliyunDayReset',
+    lastWeek: 'lastAliyunWeekReset',
   },
 };
 
@@ -126,23 +124,6 @@ function normalizeTokenProvider(counter, update, providerKey, dayStart, weekStar
   }
 }
 
-function normalizeMiniMaxCounter(counter, update, dayStart, weekStart) {
-  ensureCounterField(counter, update, 'minimaxDailyRequests', 0);
-  ensureCounterField(counter, update, 'minimaxWeeklyRequests', 0);
-  ensureCounterField(counter, update, 'lastMiniMaxDayReset', resolveResetDate(counter, 'lastMiniMaxDayReset', null, dayStart));
-  ensureCounterField(counter, update, 'lastMiniMaxWeekReset', resolveResetDate(counter, 'lastMiniMaxWeekReset', null, weekStart));
-
-  if (isBefore(counter.lastMiniMaxDayReset, dayStart)) {
-    setCounterField(counter, update, 'minimaxDailyRequests', 0);
-    setCounterField(counter, update, 'lastMiniMaxDayReset', dayStart);
-  }
-
-  if (isBefore(counter.lastMiniMaxWeekReset, weekStart)) {
-    setCounterField(counter, update, 'minimaxWeeklyRequests', 0);
-    setCounterField(counter, update, 'lastMiniMaxWeekReset', weekStart);
-  }
-}
-
 function createInitialCounter(studentId, dayStart, weekStart) {
   return {
     studentId,
@@ -150,20 +131,14 @@ function createInitialCounter(studentId, dayStart, weekStart) {
     weeklyTokens: 0,
     mimoDailyTokens: 0,
     mimoWeeklyTokens: 0,
-    deepseekDailyTokens: 0,
-    deepseekWeeklyTokens: 0,
-    deepseekDailyCostMicroCny: 0,
-    deepseekWeeklyCostMicroCny: 0,
-    minimaxDailyRequests: 0,
-    minimaxWeeklyRequests: 0,
+    aliyunDailyTokens: 0,
+    aliyunWeeklyTokens: 0,
     lastDayReset: dayStart,
     lastWeekReset: weekStart,
     lastMimoDayReset: dayStart,
     lastMimoWeekReset: weekStart,
-    lastDeepSeekDayReset: dayStart,
-    lastDeepSeekWeekReset: weekStart,
-    lastMiniMaxDayReset: dayStart,
-    lastMiniMaxWeekReset: weekStart,
+    lastAliyunDayReset: dayStart,
+    lastAliyunWeekReset: weekStart,
   };
 }
 
@@ -171,8 +146,7 @@ function normalizeCounter(counter, dayStart, weekStart) {
   const update = {};
 
   normalizeTokenProvider(counter, update, 'mimo', dayStart, weekStart);
-  normalizeTokenProvider(counter, update, 'deepseek', dayStart, weekStart);
-  normalizeMiniMaxCounter(counter, update, dayStart, weekStart);
+  normalizeTokenProvider(counter, update, 'aliyun', dayStart, weekStart);
 
   return update;
 }
@@ -239,21 +213,15 @@ function getTokenUsage(counter = {}, providerKey = 'mimo') {
 
 function getUsageSummary(counter = {}) {
   const mimo = getTokenUsage(counter, 'mimo');
-  const deepseek = getTokenUsage(counter, 'deepseek');
+  const aliyun = getTokenUsage(counter, 'aliyun');
 
   return {
     dailyTokensUsed: mimo.dailyTokens,
     weeklyTokensUsed: mimo.weeklyTokens,
     mimoDailyTokensUsed: mimo.dailyTokens,
     mimoWeeklyTokensUsed: mimo.weeklyTokens,
-    deepseekDailyTokensUsed: deepseek.dailyTokens,
-    deepseekWeeklyTokensUsed: deepseek.weeklyTokens,
-    deepseekDailyCostMicroCny: deepseek.dailyCostMicroCny,
-    deepseekWeeklyCostMicroCny: deepseek.weeklyCostMicroCny,
-    deepseekDailyCostCny: deepseek.dailyCostCny,
-    deepseekWeeklyCostCny: deepseek.weeklyCostCny,
-    minimaxDailyRequestsUsed: toCounterNumber(counter.minimaxDailyRequests),
-    minimaxWeeklyRequestsUsed: toCounterNumber(counter.minimaxWeeklyRequests),
+    aliyunDailyTokensUsed: aliyun.dailyTokens,
+    aliyunWeeklyTokensUsed: aliyun.weeklyTokens,
   };
 }
 
@@ -320,104 +288,11 @@ async function addTokens(studentId, providerOrTokens, maybeTokens, maybeCostMicr
   return addTokenUsage(studentId, 'mimo', providerOrTokens, maybeTokens || 0);
 }
 
-function getMiniMaxRequestQuota() {
-  return config.defaultMiniMaxQuota;
-}
-
-async function checkMiniMaxQuota(studentId, requestUnits = 1) {
-  const { data } = await db.collection('users').where({ studentId }).limit(1).get();
-  if (!data || data.length === 0) {
-    return { allowed: false, reason: '用户不存在' };
-  }
-
-  const user = data[0];
-  const defaultQuota = getMiniMaxRequestQuota();
-  const userQuota = user.quota || {};
-  const dailyLimit = Number.isFinite(Number(userQuota.minimaxDailyRequestLimit))
-    ? Number(userQuota.minimaxDailyRequestLimit)
-    : defaultQuota.dailyRequestLimit;
-  const weeklyLimit = Number.isFinite(Number(userQuota.minimaxWeeklyRequestLimit))
-    ? Number(userQuota.minimaxWeeklyRequestLimit)
-    : defaultQuota.weeklyRequestLimit;
-
-  const counter = await getOrCreateCounter(studentId);
-  const nextDaily = toCounterNumber(counter.minimaxDailyRequests) + requestUnits;
-  const nextWeekly = toCounterNumber(counter.minimaxWeeklyRequests) + requestUnits;
-
-  if (nextDaily > dailyLimit) {
-    return { allowed: false, reason: `MiniMax 今日调用次数已用完（${dailyLimit} 次/日）` };
-  }
-
-  if (nextWeekly > weeklyLimit) {
-    return { allowed: false, reason: `MiniMax 本周调用次数已用完（${weeklyLimit} 次/周）` };
-  }
-
-  return {
-    allowed: true,
-    dailyRemaining: dailyLimit - toCounterNumber(counter.minimaxDailyRequests),
-    weeklyRemaining: weeklyLimit - toCounterNumber(counter.minimaxWeeklyRequests),
-  };
-}
-
-async function addMiniMaxRequests(studentId, requestUnits = 1) {
-  if (!requestUnits || requestUnits <= 0) return;
-  await getOrCreateCounter(studentId);
-  await db.collection('token_counters')
-    .where({ studentId })
-    .update({
-      minimaxDailyRequests: _.inc(requestUnits),
-      minimaxWeeklyRequests: _.inc(requestUnits),
-    });
-}
-
-function getDeepSeekCostQuota() {
-  return config.defaultDeepSeekQuota;
-}
-
-async function checkDeepSeekCostQuota(studentId) {
-  const { data } = await db.collection('users').where({ studentId }).limit(1).get();
-  if (!data || data.length === 0) {
-    return { allowed: false, reason: '用户不存在' };
-  }
-
-  const user = data[0];
-  const userQuota = user.quota || {};
-  const defaultDsQuota = getDeepSeekCostQuota();
-  const dailyLimit = Number.isFinite(Number(userQuota.deepseekDailyCostLimitCny))
-    ? Number(userQuota.deepseekDailyCostLimitCny)
-    : defaultDsQuota.dailyCostLimitCny;
-  const weeklyLimit = Number.isFinite(Number(userQuota.deepseekWeeklyCostLimitCny))
-    ? Number(userQuota.deepseekWeeklyCostLimitCny)
-    : defaultDsQuota.weeklyCostLimitCny;
-
-  const counter = await getOrCreateCounter(studentId);
-  const usage = getTokenUsage(counter, 'deepseek');
-
-  if (usage.dailyCostCny >= dailyLimit) {
-    return { allowed: false, reason: `DeepSeek 今日金额额度已用完（¥${dailyLimit}/日）` };
-  }
-
-  if (usage.weeklyCostCny >= weeklyLimit) {
-    return { allowed: false, reason: `DeepSeek 本周金额额度已用完（¥${weeklyLimit}/周）` };
-  }
-
-  return {
-    allowed: true,
-    dailyRemaining: dailyLimit - usage.dailyCostCny,
-    weeklyRemaining: weeklyLimit - usage.weeklyCostCny,
-  };
-}
-
 module.exports = {
-  addMiniMaxRequests,
   addTokenUsage,
   addTokens,
-  checkDeepSeekCostQuota,
-  checkMiniMaxQuota,
   checkQuota,
   checkTokenQuota,
-  getDeepSeekCostQuota,
-  getMiniMaxRequestQuota,
   getOrCreateCounter,
   getTokenUsage,
   getUsageSummary,

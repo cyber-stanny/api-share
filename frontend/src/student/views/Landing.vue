@@ -19,19 +19,16 @@ const authMode = ref<'login' | 'register'>('login');
 const registeredApiKey = ref('');
 
 const publicModelCards: ModelInfo[] = [
-  { id: 'MiniMax-M2.7', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.7-highspeed', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.5', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.5-highspeed', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.1', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.1-highspeed', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2.5-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2.5', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-flash', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-pro', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'glm-5.1', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'kimi-k2.6', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v3.2', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-flash', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-pro', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'qwen3.7-max', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
 ];
 
 const publicGroups = groupModelsByProvider(publicModelCards);
@@ -60,9 +57,9 @@ async function handleAuthSuccess(apiKey?: string) {
     <TopBar />
     <section class="landing">
       <div class="hero">
-        <div class="eyebrow">Token Plan Gateway · MiMo / MiniMax / DeepSeek</div>
+        <div class="eyebrow">Token Plan Gateway · MiMo / Aliyun</div>
         <h1>学生专属的大模型 API 入口</h1>
-        <p>用白名单学号注册，领取专属 API Key。当前开放 MiMo / MiniMax / DeepSeek 文本模型，直接接入 Claude Code 或 OpenAI 兼容客户端。</p>
+        <p>用白名单学号注册，领取专属 API Key。当前开放 MiMo 以及阿里云 Token Plan 文本模型，直接接入 Claude Code 或 OpenAI 兼容客户端。</p>
         <div class="actions">
           <button class="btn primary" @click="openAuth('register')">注册领取 Key</button>
           <button class="btn" @click="openAuth('login')">登录控制台</button>

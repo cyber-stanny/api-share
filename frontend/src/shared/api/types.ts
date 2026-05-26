@@ -7,22 +7,10 @@ export interface User {
     dailyTokenLimit: number;
     weeklyTokenLimit: number;
   };
-  minimaxQuota?: {
-    dailyRequestLimit: number;
-    weeklyRequestLimit: number;
-  };
-  deepseekQuota?: {
-    dailyCostLimitCny: number;
-    weeklyCostLimitCny: number;
-  };
   dailyTokensUsed: number;
   weeklyTokensUsed: number;
-  minimaxDailyRequestsUsed: number;
-  minimaxWeeklyRequestsUsed: number;
-  deepseekDailyTokensUsed?: number;
-  deepseekWeeklyTokensUsed?: number;
-  deepseekDailyCostCny?: number;
-  deepseekWeeklyCostCny?: number;
+  aliyunDailyTokensUsed: number;
+  aliyunWeeklyTokensUsed: number;
   createdAt: string;
 }
 

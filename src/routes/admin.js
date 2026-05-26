@@ -50,8 +50,8 @@ function validateUsageFilters({ studentId, model, provider, groupBy }) {
   if (model && String(model).length > 128) {
     return 'model 不能超过 128 个字符';
   }
-  if (provider && !['mimo', 'minimax', 'deepseek'].includes(provider)) {
-    return 'provider 只支持 mimo / minimax / deepseek';
+  if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
+    return 'provider 只支持 mimo / aliyun；minimax / deepseek 仅保留历史查询';
   }
   if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
     return 'groupBy 只支持 day / week / month / all';
@@ -125,22 +125,6 @@ router.get('/students', adminAuth, async (req, res) => {
         apiKeyPrefix: s.apiKeyPrefix,
         quota: s.quota,
         ...usage,
-        deepseekQuota: {
-          dailyCostLimitCny: Number.isFinite(Number(s.quota?.deepseekDailyCostLimitCny))
-            ? Number(s.quota.deepseekDailyCostLimitCny)
-            : config.defaultDeepSeekQuota.dailyCostLimitCny,
-          weeklyCostLimitCny: Number.isFinite(Number(s.quota?.deepseekWeeklyCostLimitCny))
-            ? Number(s.quota.deepseekWeeklyCostLimitCny)
-            : config.defaultDeepSeekQuota.weeklyCostLimitCny,
-        },
-        minimaxQuota: {
-          dailyRequestLimit: Number.isFinite(Number(s.quota?.minimaxDailyRequestLimit))
-            ? Number(s.quota.minimaxDailyRequestLimit)
-            : config.defaultMiniMaxQuota.dailyRequestLimit,
-          weeklyRequestLimit: Number.isFinite(Number(s.quota?.minimaxWeeklyRequestLimit))
-            ? Number(s.quota.minimaxWeeklyRequestLimit)
-            : config.defaultMiniMaxQuota.weeklyRequestLimit,
-        },
         createdAt: s.createdAt,
       };
     }));
@@ -155,7 +139,7 @@ router.get('/students', adminAuth, async (req, res) => {
 // 调整学生额度
 router.put('/students/:id/quota', adminAuth, async (req, res) => {
   try {
-    const { dailyTokenLimit, weeklyTokenLimit, deepseekDailyCostLimitCny, deepseekWeeklyCostLimitCny, minimaxDailyRequestLimit, minimaxWeeklyRequestLimit } = req.body;
+    const { dailyTokenLimit, weeklyTokenLimit } = req.body;
     const update = {};
     let nextDailyLimit;
     let nextWeeklyLimit;
@@ -172,27 +156,6 @@ router.put('/students/:id/quota', adminAuth, async (req, res) => {
       nextWeeklyLimit = parsed.value;
       update['quota.weeklyTokenLimit'] = nextWeeklyLimit;
     }
-    if (deepseekDailyCostLimitCny !== undefined) {
-      const val = Number(deepseekDailyCostLimitCny);
-      if (!Number.isFinite(val) || val < 0) return error(res, 'deepseekDailyCostLimitCny 必须是非负数');
-      update['quota.deepseekDailyCostLimitCny'] = val;
-    }
-    if (deepseekWeeklyCostLimitCny !== undefined) {
-      const val = Number(deepseekWeeklyCostLimitCny);
-      if (!Number.isFinite(val) || val < 0) return error(res, 'deepseekWeeklyCostLimitCny 必须是非负数');
-      update['quota.deepseekWeeklyCostLimitCny'] = val;
-    }
-    if (minimaxDailyRequestLimit !== undefined) {
-      const parsed = parseTokenLimit(minimaxDailyRequestLimit, 'minimaxDailyRequestLimit');
-      if (parsed.error) return error(res, parsed.error);
-      update['quota.minimaxDailyRequestLimit'] = parsed.value;
-    }
-    if (minimaxWeeklyRequestLimit !== undefined) {
-      const parsed = parseTokenLimit(minimaxWeeklyRequestLimit, 'minimaxWeeklyRequestLimit');
-      if (parsed.error) return error(res, parsed.error);
-      update['quota.minimaxWeeklyRequestLimit'] = parsed.value;
-    }
-
     if (Object.keys(update).length === 0) {
       return error(res, '请提供要调整的额度');
     }

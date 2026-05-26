@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-LLM API proxy platform (大模型 API 中转平台) for students. Students register with whitelisted student IDs, receive an API Key, and proxy requests to upstream LLM providers (MiMo, MiniMax, DeepSeek). Supports OpenAI-compatible format (`/v1/chat/completions`) and Anthropic format (`/v1/messages`).
+LLM API proxy platform (大模型 API 中转平台) for students. Students register with whitelisted student IDs, receive an API Key, and proxy requests to upstream LLM providers (MiMo and Aliyun Token Plan). Supports OpenAI-compatible format (`/v1/chat/completions`) and Anthropic format (`/v1/messages`).
 
 **Stack**: Node.js + Express + serverless-http + Tencent CloudBase (serverless cloud functions + document database) + Vue 3/Vite frontend in `frontend/`
 
@@ -73,7 +73,7 @@ The core of the system. Each request goes through: auth → quota check → rate
 
 ### Token-Based Quota (`services/quota.js`)
 
-Uses a `token_counters` collection for fast lookups instead of summing usage_records. Each student has a counter document with separate MiMo token, DeepSeek token/CNY cost, and MiniMax request fields, incremented atomically via `_.inc()`. Counters auto-reset when day/week boundaries are crossed.
+Uses a `token_counters` collection for fast lookups instead of summing usage_records. Each student has a counter document with separate MiMo and Aliyun token fields, incremented atomically via `_.inc()`. Deprecated provider fields may remain in historical documents but are not written by new requests. Counters auto-reset when day/week boundaries are crossed.
 
 ### Upstream Routing (`services/upstream.js`)
 
@@ -87,13 +87,13 @@ Cached (1 min TTL). Each upstream record has a `protocol` field (`openai` or `an
 | `admins` | Admin accounts |
 | `whitelist` | Allowed student IDs for self-registration |
 | `upstreams` | Provider configs. Has `protocol` field (`openai`/`anthropic`) |
-| `usage_records` | Per-request logs with token counts, billing provider, and DeepSeek CNY cost |
-| `token_counters` | Aggregated daily/weekly MiMo tokens, DeepSeek tokens/CNY cost, and MiniMax requests |
+| `usage_records` | Per-request logs with token counts and billing provider |
+| `token_counters` | Aggregated daily/weekly MiMo and Aliyun tokens |
 
 ### Services Layer
 
 - `services/quota.js` — Token quota check and accumulation
-- `services/billing.js` — Provider billing units and DeepSeek CNY cost calculation
+- `services/billing.js` — Provider token billing units
 - `services/rateLimit.js` — In-memory per-student rate limit (60 req/min) + global concurrent limit (100)
 - `services/upstream.js` — Cached upstream provider lookup
 - `services/usage.js` — Async usage record write (fire-and-forget)
@@ -101,7 +101,8 @@ Cached (1 min TTL). Each upstream record has a `protocol` field (`openai` or `an
 ### Init Scripts (`scripts/`)
 
 - `init-admin.js` — Creates default admin account
-- `seed-upstreams.js` — Seeds upstream providers (MiMo + MiniMax + DeepSeek with both protocols)
+- `seed-upstreams.js` — Seeds upstream providers (MiMo + Aliyun with both protocols)
+- `reconcile-upstreams.js` — Previews or applies Aliyun enablement and retired provider disablement
 
 ## Key Conventions
 

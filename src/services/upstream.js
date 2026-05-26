@@ -1,11 +1,31 @@
 const { db } = require('../db');
-const { MODEL_ORDER, getModelMetadata, isTextModelSupported } = require('./modelCatalog');
+const {
+  MODEL_ORDER,
+  UPSTREAM_PRESETS,
+  getModelMetadata,
+  isTextModelSupported,
+  isUpstreamSupported,
+} = require('./modelCatalog');
 
 // 缓存上游配置（避免每次请求都查库）
 let cache = { data: null, time: 0 };
 const CACHE_TTL = 60 * 1000; // 1 分钟
 
+function getLocalPresetUpstreams() {
+  return UPSTREAM_PRESETS
+    .filter(preset => process.env[preset.apiKeyEnv])
+    .map(preset => ({
+      ...preset,
+      _id: `local:${preset.name}:${preset.protocol}`,
+      apiKey: process.env[preset.apiKeyEnv],
+    }));
+}
+
 async function getUpstreams() {
+  if (process.env.LOCAL_UPSTREAM_PRESETS === 'true') {
+    return getLocalPresetUpstreams();
+  }
+
   const now = Date.now();
   if (cache.data && now - cache.time < CACHE_TTL) {
     return cache.data;
@@ -25,7 +45,7 @@ async function findUpstream(model, protocol = 'openai') {
 
   // 找到支持该模型和协议的所有上游，按 priority 降序
   const candidates = upstreams
-    .filter(u => isTextModelSupported(model) && u.models && u.models.includes(model) && (u.protocol || 'openai') === protocol)
+    .filter(u => isUpstreamSupported(u) && isTextModelSupported(model) && u.models && u.models.includes(model) && (u.protocol || 'openai') === protocol)
     .sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
   if (candidates.length === 0) {
@@ -48,6 +68,7 @@ async function getAvailableModelDetails(protocol) {
   const modelMap = new Map();
 
   for (const upstream of upstreams) {
+    if (!isUpstreamSupported(upstream)) continue;
     if (protocol && (upstream.protocol || 'openai') !== protocol) continue;
     if (!Array.isArray(upstream.models)) continue;
 

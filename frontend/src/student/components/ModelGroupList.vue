@@ -34,9 +34,6 @@ function visibleModels(provider: string, models: ModelInfo[]) {
     <div v-for="[provider, models] in props.groups" :key="provider" class="model-group">
       <h3>{{ provider }}</h3>
       <div class="model-group-subtitle">{{ models.length }} 个模型</div>
-      <div v-if="provider.includes('MiniMax')" class="model-group-subtitle">
-        MiniMax highspeed 不额外加倍
-      </div>
       <div class="model-grid">
         <div v-for="model in visibleModels(provider, models)" :key="model.id" class="model-card">
           <div class="model-id">{{ model.id }}</div>

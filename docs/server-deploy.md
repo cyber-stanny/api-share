@@ -30,8 +30,7 @@ ADMIN_INIT_PASSWORD=管理员初始密码
 CORS_ORIGINS=https://你的域名
 PROXY_ENABLED=true
 MIMO_API_KEY=你的 MiMo Key
-MINIMAX_API_KEY=你的 MiniMax Key
-DEEPSEEK_API_KEY=你的 DeepSeek Key
+ALIYUN_API_KEY=你的阿里云 Token Plan Key
 ```
 
 `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 需要有访问对应 CloudBase 环境数据库的权限。
@@ -49,6 +48,13 @@ node scripts/seed-upstreams.js
 
 ```bash
 npm run sync:upstreams
+```
+
+供应商迁移发布时，先预览再应用上游对账。预览不会修改数据库；应用会加入 Aliyun 上游并禁用 MiniMax 与旧 DeepSeek 上游：
+
+```bash
+npm run reconcile:upstreams
+npm run reconcile:upstreams:apply
 ```
 
 ## 启动服务

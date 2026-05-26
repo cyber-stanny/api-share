@@ -6,16 +6,16 @@ import { baseUrl, openaiBaseUrl } from '@shared/api/client';
 const dashboard = useDashboardStore();
 
 const recommended = computed(() => {
-  const m = dashboard.models.find(x => String(x.provider || '').includes('MiniMax')) || dashboard.models[0];
-  return m || { id: 'MiniMax-M2.7', provider: 'MiniMax Token Plan' };
+  const m = dashboard.models.find(x => x.id === 'qwen3.7-max') || dashboard.models[0];
+  return m || { id: 'qwen3.7-max', provider: 'Aliyun Token Plan' };
 });
 
-const model = computed(() => recommended.value.id || 'MiniMax-M2.7');
-const provider = computed(() => recommended.value.provider || 'MiniMax Token Plan');
+const model = computed(() => recommended.value.id || 'qwen3.7-max');
+const provider = computed(() => recommended.value.provider || 'Aliyun Token Plan');
 
 const claudeGuide = computed(() => {
   const key = '<你的 API Key>';
-  const recommendedNote = '# 推荐模型：MiniMax-M2.7 / MiniMax-M2.7-highspeed';
+  const recommendedNote = '# 推荐模型：qwen3.7-max';
   return `${recommendedNote}
 # 当前示例来源：${provider.value}
 export ANTHROPIC_BASE_URL="${baseUrl()}"
@@ -25,7 +25,7 @@ export ANTHROPIC_MODEL="${model.value}"`;
 
 const openaiGuide = computed(() => {
   const key = '<你的 API Key>';
-  const recommendedNote = '# 推荐模型：MiniMax-M2.7 / MiniMax-M2.7-highspeed';
+  const recommendedNote = '# 推荐模型：qwen3.7-max';
   return `${recommendedNote}
 curl ${openaiBaseUrl()}/chat/completions \\
   -H "Authorization: Bearer ${key}" \\

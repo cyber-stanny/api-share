@@ -7,7 +7,7 @@ const { studentAuth } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getAvailableModelDetails } = require('../services/upstream');
-const { getUsageSummary, getDeepSeekCostQuota, getOrCreateCounter } = require('../services/quota');
+const { getUsageSummary, getOrCreateCounter } = require('../services/quota');
 const { queryUsageStats } = require('../services/usageStats');
 const { parseBeijingDateParam } = require('../utils/dateParams');
 
@@ -56,8 +56,8 @@ function validateUsageFilters({ model, provider, groupBy }) {
   if (model && String(model).length > 128) {
     return 'model 不能超过 128 个字符';
   }
-  if (provider && !['mimo', 'minimax', 'deepseek'].includes(provider)) {
-    return 'provider 只支持 mimo / minimax / deepseek';
+  if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
+    return 'provider 只支持 mimo / aliyun；minimax / deepseek 仅保留历史查询';
   }
   if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
     return 'groupBy 只支持 day / week / month / all';
@@ -247,27 +247,7 @@ router.get('/profile', studentAuth, async (req, res) => {
     const user = users[0];
     const counter = await getOrCreateCounter(req.student.studentId);
     const quota = user.quota || config.defaultQuota;
-    const userQuota = user.quota || {};
-    const defaultMiniMaxQuota = config.defaultMiniMaxQuota;
-    const miniMaxQuota = {
-      dailyRequestLimit: Number.isFinite(Number(userQuota.minimaxDailyRequestLimit))
-        ? Number(userQuota.minimaxDailyRequestLimit)
-        : defaultMiniMaxQuota.dailyRequestLimit,
-      weeklyRequestLimit: Number.isFinite(Number(userQuota.minimaxWeeklyRequestLimit))
-        ? Number(userQuota.minimaxWeeklyRequestLimit)
-        : defaultMiniMaxQuota.weeklyRequestLimit,
-    };
     const usage = getUsageSummary(counter);
-
-    const defaultDsQuota = getDeepSeekCostQuota();
-    const deepseekQuota = {
-      dailyCostLimitCny: Number.isFinite(Number(userQuota.deepseekDailyCostLimitCny))
-        ? Number(userQuota.deepseekDailyCostLimitCny)
-        : defaultDsQuota.dailyCostLimitCny,
-      weeklyCostLimitCny: Number.isFinite(Number(userQuota.deepseekWeeklyCostLimitCny))
-        ? Number(userQuota.deepseekWeeklyCostLimitCny)
-        : defaultDsQuota.weeklyCostLimitCny,
-    };
 
     return success(res, {
       studentId: user.studentId,
@@ -275,8 +255,6 @@ router.get('/profile', studentAuth, async (req, res) => {
       apiKeyPrefix: user.apiKeyPrefix,
       quota,
       ...usage,
-      minimaxQuota: miniMaxQuota,
-      deepseekQuota,
       createdAt: user.createdAt,
     });
   } catch (err) {
@@ -296,8 +274,8 @@ router.get('/usage', studentAuth, async (req, res) => {
     if (model && String(model).length > 128) {
       return error(res, 'model 不能超过 128 个字符');
     }
-    if (provider && !['mimo', 'minimax', 'deepseek'].includes(provider)) {
-      return error(res, 'provider 只支持 mimo / minimax / deepseek');
+    if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
+      return error(res, 'provider 只支持 mimo / aliyun；minimax / deepseek 仅保留历史查询');
     }
     const start = parseDateParam(startDate, 'startDate');
     if (start.error) return error(res, start.error);

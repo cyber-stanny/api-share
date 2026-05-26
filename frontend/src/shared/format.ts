@@ -25,12 +25,11 @@ export function pct(used: number, limit: number): number {
 
 export function providerLabel(provider: string): string {
   const map: Record<string, string> = {
-    'minimax': 'MiniMax',
-    'MiniMax': 'MiniMax Token Plan',
     'mimo': 'MiMo',
     'MiMo': 'MiMo Token Plan',
-    'deepseek': 'DeepSeek',
-    'deepseek-cai': 'DeepSeek CNY',
+    'aliyun': 'Aliyun Token Plan',
+    'minimax': 'MiniMax (历史)',
+    'deepseek': 'DeepSeek (历史)',
   };
   return map[provider] || provider;
 }

@@ -86,8 +86,9 @@ onMounted(loadUsage);
         <select v-model="provider" class="input input-select">
           <option value="">全部供应商</option>
           <option value="mimo">MiMo</option>
-          <option value="minimax">MiniMax</option>
-          <option value="deepseek">DeepSeek</option>
+          <option value="aliyun">Aliyun Token Plan</option>
+          <option value="minimax">MiniMax（历史）</option>
+          <option value="deepseek">DeepSeek（历史）</option>
         </select>
         <input
           v-model="model"

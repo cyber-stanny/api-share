@@ -34,24 +34,19 @@ npm audit fix
 
 ## 异常处理
 
-## MiMo / MiniMax / DeepSeek Token Plan 容量观察
+## MiMo / Aliyun Token Plan 容量观察
 
-当前 MiMo / MiniMax / DeepSeek 上游保护默认值：
+当前 MiMo / Aliyun 上游保护默认值：
 
 - 并发：`UPSTREAM_MIMO_MAX_CONCURRENT=8`
 - 队列：`UPSTREAM_MIMO_MAX_QUEUE=10`
 - 排队超时：`UPSTREAM_MIMO_QUEUE_TIMEOUT_MS=30000`
 - 速率：`UPSTREAM_MIMO_RPM=80`
-- MiniMax 默认使用同一组限制参数，若需要单独调节可改：
-  - `UPSTREAM_MINIMAX_MAX_CONCURRENT=8`
-  - `UPSTREAM_MINIMAX_MAX_QUEUE=10`
-  - `UPSTREAM_MINIMAX_QUEUE_TIMEOUT_MS=30000`
-  - `UPSTREAM_MINIMAX_RPM=80`
-- DeepSeek 默认使用同一组限制参数，若需要单独调节可改：
-  - `UPSTREAM_DEEPSEEK_MAX_CONCURRENT=8`
-  - `UPSTREAM_DEEPSEEK_MAX_QUEUE=10`
-  - `UPSTREAM_DEEPSEEK_QUEUE_TIMEOUT_MS=30000`
-  - `UPSTREAM_DEEPSEEK_RPM=80`
+- Aliyun 默认使用同一组限制参数，若需要单独调节可改：
+  - `UPSTREAM_ALIYUN_MAX_CONCURRENT=8`
+  - `UPSTREAM_ALIYUN_MAX_QUEUE=10`
+  - `UPSTREAM_ALIYUN_QUEUE_TIMEOUT_MS=30000`
+  - `UPSTREAM_ALIYUN_RPM=80`
 
 查看当前实例内存指标：
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useDashboardStore } from '../stores/dashboard';
-import { fmt, fmtDate, fmtTokens, pct } from '@shared/format';
+import { fmt, fmtDate, pct } from '@shared/format';
 import { escapeHtml } from '@shared/api/client';
 import DateRangePicker from '@shared/components/DateRangePicker.vue';
 import { getShanghaiTodayRange } from '@shared/timeRange';
@@ -97,56 +97,30 @@ onMounted(() => {
         <div class="provider-footer">mimo-v2.5-pro · 2x token calculation</div>
       </div>
 
-      <!-- DeepSeek Card -->
+      <!-- Aliyun Card -->
       <div class="provider-card">
         <div class="provider-header">
           <div class="provider-title">
             <span class="dot" style="background:#4D6BFE"></span>
-            <span>DeepSeek</span>
+            <span>Aliyun Token Plan</span>
           </div>
-          <a href="#" class="detail-link" @click.prevent="showProviderToday('deepseek')">查看详情 →</a>
+          <a href="#" class="detail-link" @click.prevent="showProviderToday('aliyun')">查看详情 →</a>
         </div>
         <div class="metric-group">
           <div class="metric">
             <div class="metric-label">今日</div>
-            <div class="metric-value">¥{{ (dashboard.profile.deepseekDailyCostCny || 0).toFixed(2) }}</div>
-            <div class="metric-ratio">¥{{ (dashboard.profile.deepseekDailyCostCny || 0).toFixed(4) }} · {{ fmtTokens(dashboard.profile.deepseekDailyTokensUsed) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.deepseekDailyCostCny || 0, dashboard.profile.deepseekQuota?.dailyCostLimitCny || 5) + '%', background: '#4D6BFE' }"></span></div>
+            <div class="metric-value">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }}</div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.dailyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunDailyTokensUsed, dashboard.profile.quota?.dailyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
           </div>
           <div class="metric">
             <div class="metric-label">本周</div>
-            <div class="metric-value">¥{{ (dashboard.profile.deepseekWeeklyCostCny || 0).toFixed(2) }}</div>
-            <div class="metric-ratio">¥{{ (dashboard.profile.deepseekWeeklyCostCny || 0).toFixed(4) }} · {{ fmtTokens(dashboard.profile.deepseekWeeklyTokensUsed) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.deepseekWeeklyCostCny || 0, dashboard.profile.deepseekQuota?.weeklyCostLimitCny || 20) + '%', background: '#4D6BFE' }"></span></div>
+            <div class="metric-value">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }}</div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.weeklyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunWeeklyTokensUsed, dashboard.profile.quota?.weeklyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
           </div>
         </div>
-        <div class="provider-footer">deepseek-chat · CNY billing</div>
-      </div>
-
-      <!-- MiniMax Card -->
-      <div class="provider-card">
-        <div class="provider-header">
-          <div class="provider-title">
-            <span class="dot" style="background:#5f7ea8"></span>
-            <span>MiniMax</span>
-          </div>
-          <a href="#" class="detail-link" @click.prevent="showProviderToday('minimax')">查看详情 →</a>
-        </div>
-        <div class="metric-group">
-          <div class="metric">
-            <div class="metric-label">今日</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.minimaxDailyRequestsUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.minimaxDailyRequestsUsed) }} / {{ fmt(dashboard.profile.minimaxQuota?.dailyRequestLimit || 0) }} requests</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.minimaxDailyRequestsUsed, dashboard.profile.minimaxQuota?.dailyRequestLimit || 0) + '%', background: '#5f7ea8' }"></span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">本周</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.minimaxWeeklyRequestsUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.minimaxWeeklyRequestsUsed) }} / {{ fmt(dashboard.profile.minimaxQuota?.weeklyRequestLimit || 0) }} requests</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.minimaxWeeklyRequestsUsed, dashboard.profile.minimaxQuota?.weeklyRequestLimit || 0) + '%', background: '#5f7ea8' }"></span></div>
-          </div>
-        </div>
-        <div class="provider-footer">minimax-ability · request-based</div>
+        <div class="provider-footer">GLM · Kimi · DeepSeek · Qwen</div>
       </div>
     </div>
 
@@ -168,8 +142,9 @@ onMounted(() => {
         <select v-model="provider" class="control">
           <option value="">全部供应商</option>
           <option value="mimo">MiMo</option>
-          <option value="minimax">MiniMax</option>
-          <option value="deepseek">DeepSeek</option>
+          <option value="aliyun">Aliyun Token Plan</option>
+          <option value="minimax">MiniMax（历史）</option>
+          <option value="deepseek">DeepSeek（历史）</option>
         </select>
         <input
           v-model="model"

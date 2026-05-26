@@ -9,42 +9,16 @@ const MIMO_MODELS = [
   'mimo-v2-tts',
 ];
 
-const MINIMAX_MODELS = [
-  'MiniMax-M2.7',
-  'MiniMax-M2.7-highspeed',
-  'MiniMax-M2.5',
-  'MiniMax-M2.5-highspeed',
-  'MiniMax-M2.1',
-  'MiniMax-M2.1-highspeed',
-  'MiniMax-M2',
-];
-
-const DEEPSEEK_MODELS = [
+const ALIYUN_MODELS = [
+  'glm-5.1',
+  'kimi-k2.6',
+  'deepseek-v3.2',
   'deepseek-v4-flash',
   'deepseek-v4-pro',
+  'qwen3.7-max',
 ];
 
-const DEEPSEEK_PRICING_PER_MILLION_CNY = {
-  'deepseek-v4-flash': {
-    inputCacheHit: 0.02,
-    inputCacheMiss: 1,
-    output: 2,
-  },
-  'deepseek-v4-pro': {
-    inputCacheHit: 0.025,
-    inputCacheMiss: 3,
-    output: 6,
-  },
-};
-
 const MODEL_METADATA = [
-  { id: 'MiniMax-M2.7', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.7-highspeed', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.5', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.5-highspeed', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.1', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2.1-highspeed', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'MiniMax-M2', provider: 'MiniMax Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2.5-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2.5', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2.5-tts-voiceclone', provider: 'MiMo Token Plan', protocols: ['openai'] },
@@ -52,8 +26,7 @@ const MODEL_METADATA = [
   { id: 'mimo-v2.5-tts', provider: 'MiMo Token Plan', protocols: ['openai'] },
   { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-flash', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-pro', provider: 'DeepSeek Token Plan', protocols: ['openai', 'anthropic'] },
+  ...ALIYUN_MODELS.map(id => ({ id, provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] })),
 ];
 
 const NON_TEXT_MODELS = new Set([
@@ -63,33 +36,19 @@ const NON_TEXT_MODELS = new Set([
   'mimo-v2-tts',
 ]);
 
+const PUBLIC_TEXT_MODELS = new Set(
+  MODEL_METADATA
+    .map(model => model.id)
+    .filter(id => !NON_TEXT_MODELS.has(id))
+);
+
 function isTextModelSupported(id) {
-  if (!id) return false;
-  return !NON_TEXT_MODELS.has(id);
+  return PUBLIC_TEXT_MODELS.has(id);
 }
 
-const MINIMAX_UPSTREAMS = [
-  {
-    name: 'MiniMax (OpenAI)',
-    provider: 'MiniMax Token Plan',
-    baseUrl: 'https://api.minimaxi.com',
-    apiKeyEnv: 'MINIMAX_API_KEY',
-    models: MINIMAX_MODELS,
-    protocol: 'openai',
-    enabled: true,
-    priority: 20,
-  },
-  {
-    name: 'MiniMax (Anthropic)',
-    provider: 'MiniMax Token Plan',
-    baseUrl: 'https://api.minimaxi.com/anthropic',
-    apiKeyEnv: 'MINIMAX_API_KEY',
-    models: MINIMAX_MODELS,
-    protocol: 'anthropic',
-    enabled: true,
-    priority: 20,
-  },
-];
+function isUpstreamSupported(upstream) {
+  return upstream?.provider === 'MiMo Token Plan' || upstream?.provider === 'Aliyun Token Plan';
+}
 
 const MIMO_UPSTREAMS = [
   {
@@ -114,30 +73,31 @@ const MIMO_UPSTREAMS = [
   },
 ];
 
-const DEEPSEEK_UPSTREAMS = [
+const ALIYUN_UPSTREAMS = [
   {
-    name: 'DeepSeek (OpenAI)',
-    provider: 'DeepSeek Token Plan',
-    baseUrl: 'https://api.deepseek.com',
-    apiKeyEnv: 'DEEPSEEK_API_KEY',
-    models: DEEPSEEK_MODELS,
+    name: 'Aliyun Token Plan (OpenAI)',
+    provider: 'Aliyun Token Plan',
+    // The proxy appends /v1/chat/completions, so omit the caller-facing /v1 suffix here.
+    baseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode',
+    apiKeyEnv: 'ALIYUN_API_KEY',
+    models: ALIYUN_MODELS,
     protocol: 'openai',
     enabled: true,
-    priority: 15,
+    priority: 20,
   },
   {
-    name: 'DeepSeek (Anthropic)',
-    provider: 'DeepSeek Token Plan',
-    baseUrl: 'https://api.deepseek.com/anthropic',
-    apiKeyEnv: 'DEEPSEEK_API_KEY',
-    models: DEEPSEEK_MODELS,
+    name: 'Aliyun Token Plan (Anthropic)',
+    provider: 'Aliyun Token Plan',
+    baseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic',
+    apiKeyEnv: 'ALIYUN_API_KEY',
+    models: ALIYUN_MODELS,
     protocol: 'anthropic',
     enabled: true,
-    priority: 15,
+    priority: 20,
   },
 ];
 
-const UPSTREAM_PRESETS = [...MINIMAX_UPSTREAMS, ...MIMO_UPSTREAMS, ...DEEPSEEK_UPSTREAMS];
+const UPSTREAM_PRESETS = [...MIMO_UPSTREAMS, ...ALIYUN_UPSTREAMS];
 
 const MODEL_ORDER = MODEL_METADATA.map(model => model.id);
 
@@ -149,33 +109,20 @@ function getModelMetadata(id) {
   };
 }
 
-function getMiniMaxRequestUnits(modelId) {
-  if (!String(modelId || '').startsWith('MiniMax-')) return 0;
-  return 1;
-}
-
 function getMimoTokenMultiplier(modelId) {
   return modelId === 'mimo-v2.5' ? 2 : 1;
 }
 
-function getDeepSeekPricing(modelId) {
-  return DEEPSEEK_PRICING_PER_MILLION_CNY[modelId] || null;
-}
-
 module.exports = {
   MIMO_MODELS,
-  MINIMAX_MODELS,
-  DEEPSEEK_MODELS,
-  DEEPSEEK_PRICING_PER_MILLION_CNY,
+  ALIYUN_MODELS,
   MODEL_METADATA,
   MODEL_ORDER,
   MIMO_UPSTREAMS,
-  MINIMAX_UPSTREAMS,
-  DEEPSEEK_UPSTREAMS,
+  ALIYUN_UPSTREAMS,
   UPSTREAM_PRESETS,
   getModelMetadata,
-  getMiniMaxRequestUnits,
   getMimoTokenMultiplier,
-  getDeepSeekPricing,
   isTextModelSupported,
+  isUpstreamSupported,
 };

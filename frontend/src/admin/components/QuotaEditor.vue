@@ -6,37 +6,25 @@ const props = defineProps<{
   studentId: string;
   currentDaily: number;
   currentWeekly: number;
-  currentDsDaily: number;
-  currentDsWeekly: number;
-  currentMmDaily: number;
-  currentMmWeekly: number;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  save: [daily: number, weekly: number, dsDaily: number, dsWeekly: number, mmDaily: number, mmWeekly: number];
+  save: [daily: number, weekly: number];
 }>();
 
 const daily = ref(props.currentDaily);
 const weekly = ref(props.currentWeekly);
-const dsDaily = ref(props.currentDsDaily);
-const dsWeekly = ref(props.currentDsWeekly);
-const mmDaily = ref(props.currentMmDaily);
-const mmWeekly = ref(props.currentMmWeekly);
 
 watch(() => props.visible, (v) => {
   if (v) {
     daily.value = props.currentDaily;
     weekly.value = props.currentWeekly;
-    dsDaily.value = props.currentDsDaily;
-    dsWeekly.value = props.currentDsWeekly;
-    mmDaily.value = props.currentMmDaily;
-    mmWeekly.value = props.currentMmWeekly;
   }
 });
 
 function handleSave() {
-  emit('save', daily.value, weekly.value, dsDaily.value, dsWeekly.value, mmDaily.value, mmWeekly.value);
+  emit('save', daily.value, weekly.value);
 }
 </script>
 
@@ -45,7 +33,7 @@ function handleSave() {
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="modal">
         <h3>调整额度 - {{ studentId }}</h3>
-        <div class="section-label">MiMo Token 限额</div>
+        <div class="section-label">每个 Token Plan 供应商的 token 限额</div>
         <div class="form-row">
           <div class="field">
             <label>每日 token 上限</label>
@@ -54,28 +42,6 @@ function handleSave() {
           <div class="field">
             <label>每周 token 上限</label>
             <input v-model.number="weekly" class="input" type="number" min="0" />
-          </div>
-        </div>
-        <div class="section-label">DeepSeek 金额限额（¥）</div>
-        <div class="form-row">
-          <div class="field">
-            <label>每日金额上限</label>
-            <input v-model.number="dsDaily" class="input" type="number" min="0" step="0.5" />
-          </div>
-          <div class="field">
-            <label>每周金额上限</label>
-            <input v-model.number="dsWeekly" class="input" type="number" min="0" step="1" />
-          </div>
-        </div>
-        <div class="section-label">MiniMax 调用次数限额</div>
-        <div class="form-row">
-          <div class="field">
-            <label>每日调用上限</label>
-            <input v-model.number="mmDaily" class="input" type="number" min="0" />
-          </div>
-          <div class="field">
-            <label>每周调用上限</label>
-            <input v-model.number="mmWeekly" class="input" type="number" min="0" />
           </div>
         </div>
         <div class="modal-actions">

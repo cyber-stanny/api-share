@@ -16,8 +16,7 @@ API Share 是一个大模型 API 中转平台，面向学生用户提供：
 当前支持的上游主要是：
 
 - MiMo Token Plan
-- MiniMax Token Plan
-- DeepSeek Token Plan
+- Aliyun Token Plan
 
 ## 核心架构
 
@@ -95,16 +94,10 @@ API Share 是一个大模型 API 中转平台，面向学生用户提供：
 
 Token 型额度在 [`src/services/quota.js`](src/services/quota.js) 中维护。
 
-目前有两套口径：
+目前有两套独立 token 计数口径：
 
-- MiMo / 硅基流动：按 token 统计
-- MiniMax：按调用次数统计
-
-MiniMax 的特殊点：
-
-- `highspeed` 模型不单独额外加倍
-- 默认每日 `1000` 次、每周 `4000` 次
-- 对应计数存放在 `token_counters` 里，同一学生同时维护 token 和 request 两套指标
+- MiMo：按 token 统计，`mimo-v2.5` 按 2 倍 token 计入额度
+- Aliyun Token Plan：按 token 统计，GLM、Kimi、DeepSeek、Qwen 都记到 `aliyun`
 
 ### 5. 上游选择与模型目录
 
@@ -131,7 +124,7 @@ MiniMax 的特殊点：
 - `users`
 
 管理员和学生都能查看自己的用量和调用历史，管理员可以看到更完整的列表。
-学生端还会把模型按 provider 分组展示，当前主要是 MiMo Token Plan 和 MiniMax Token Plan，并在概览里展示 MiMo token 用量和 MiniMax 调用次数用量。
+学生端还会把模型按 provider 分组展示，当前是 MiMo Token Plan 和 Aliyun Token Plan，并在概览里展示两者的 token 用量。
 
 ## 数据集合
 
@@ -142,7 +135,7 @@ MiniMax 的特殊点：
 - `whitelist`：允许注册的学号
 - `upstreams`：上游配置
 - `usage_records`：调用日志
-- `token_counters`：token 与 MiniMax 次数统计
+- `token_counters`：MiMo 与 Aliyun token 统计；旧供应商历史字段可保留但不再写入
 
 `upstreams` 不是学生业务数据，而是运行时配置源。不要把学生数据和上游密钥混放到别的集合里。
 
@@ -181,7 +174,7 @@ MiniMax 的特殊点：
 - `CORS_ORIGINS`
 - `PROXY_ENABLED`
 - `MIMO_API_KEY`
-- `MINIMAX_API_KEY`
+- `ALIYUN_API_KEY`
 - `TENCENT_SECRET_ID`
 - `TENCENT_SECRET_KEY`
 
