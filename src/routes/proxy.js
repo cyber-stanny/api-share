@@ -6,6 +6,12 @@ const { checkRateLimit, acquireConcurrent, releaseConcurrent } = require('../ser
 const { acquireUpstreamSlot } = require('../services/upstreamLimiter');
 const { recordUsage } = require('../services/usage');
 const { createBillingContext, finalizeBilling } = require('../services/billing');
+const {
+  responsesToChatRequest,
+  chatToResponsesObject,
+  ChatToResponsesStream,
+  serializeResponsesEvent,
+} = require('../services/responsesAdapter');
 
 const router = express.Router();
 
@@ -360,5 +366,220 @@ router.post('/chat/completions', apiKeyAuth, (req, res) => handleProxy(req, res,
 
 // Anthropic 格式代理
 router.post('/messages', apiKeyAuth, (req, res) => handleProxy(req, res, 'anthropic'));
+
+// Responses 格式代理（OpenAI Codex 等只发 Responses API 的客户端）
+// 入站 Responses 请求 -> 翻译成 Chat Completions 转发 openai 上游 -> 响应翻译回 Responses
+async function handleResponsesProxy(req, res) {
+  const body = req.body || {};
+  const { model } = body;
+  const stream = !!body.stream;
+  const errJson = (msg, type = 'invalid_request_error') => ({ error: { message: msg, type } });
+
+  if (!model) {
+    return res.status(400).json(errJson('缺少 model 参数'));
+  }
+
+  const rateResult = checkRateLimit(req.student.studentId);
+  if (!rateResult.allowed) {
+    res.set('Retry-After', '5');
+    return res.status(429).json(errJson(rateResult.reason, 'rate_limit_error'));
+  }
+
+  if (!acquireConcurrent()) {
+    res.set('Retry-After', '10');
+    return res.status(429).json(errJson('系统繁忙，请稍后再试', 'rate_limit_error'));
+  }
+
+  let upstream;
+  let upstreamSlot = null;
+  let released = false;
+  let billingContext = null;
+  const releaseOnce = () => {
+    if (released) return;
+    released = true;
+    releaseConcurrent();
+  };
+
+  try {
+    upstream = await findUpstream(model, 'openai');
+    if (!upstream) {
+      return res.status(404).json(errJson(`模型 ${model} 不可用`));
+    }
+
+    billingContext = createBillingContext(upstream, model);
+    const quotaResult = await checkTokenQuota(req.student.studentId, billingContext.billingProvider);
+    if (!quotaResult.allowed) {
+      res.set('Retry-After', '86400');
+      return res.status(429).json(errJson(quotaResult.reason, 'rate_limit_error'));
+    }
+
+    upstreamSlot = await acquireUpstreamSlot(upstream);
+    if (!upstreamSlot.allowed) {
+      return res.status(429).json(errJson(upstreamSlot.reason || '上游繁忙，请稍后再试', 'rate_limit_error'));
+    }
+
+    const chatBody = responsesToChatRequest(body);
+    if (stream) chatBody.stream_options = { include_usage: true };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    let upstreamRes;
+    try {
+      upstreamRes = await fetch(`${upstream.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${upstream.apiKey}` },
+        body: JSON.stringify(chatBody),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!upstreamRes.ok) {
+      let errBody;
+      try {
+        errBody = await upstreamRes.json();
+      } catch {
+        errBody = errJson('上游返回错误', 'api_error');
+      }
+      await persistUsageAndBilling({
+        studentId: req.student.studentId,
+        model,
+        billingModel: model,
+        upstreamId: upstream._id,
+        usage: null,
+        status: upstreamRes.status,
+        billingContext,
+      });
+      return res.status(upstreamRes.status).json(errBody);
+    }
+
+    // Streaming：把上游 Chat SSE 翻译成 Responses SSE
+    if (stream) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+
+      const translator = new ChatToResponsesStream({ model });
+      for (const evt of translator.start()) res.write(serializeResponsesEvent(evt));
+
+      const reader = upstreamRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let capturedUsage = null;
+      let clientClosed = false;
+      let streamStatus = 200;
+      const onClose = () => {
+        clientClosed = true;
+        controller.abort();
+        reader.cancel().catch(() => {});
+      };
+      res.on('close', onClose);
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (clientClosed) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const payload = trimmed.slice(5).trimStart();
+            if (payload === '[DONE]') continue;
+            let chunk;
+            try { chunk = JSON.parse(payload); } catch { continue; }
+            for (const evt of translator.ingest(chunk)) res.write(serializeResponsesEvent(evt));
+          }
+        }
+        for (const evt of translator.finish()) res.write(serializeResponsesEvent(evt));
+        capturedUsage = normalizeOpenAIUsage(translator.getRawUsage());
+      } catch (err) {
+        streamStatus = clientClosed ? 499 : 502;
+        console.error('responses stream error:', err);
+        if (!clientClosed && !res.writableEnded) {
+          res.write(serializeResponsesEvent(translator.failed('上游流式中断')));
+        }
+      } finally {
+        res.off('close', onClose);
+        if (!res.writableEnded) res.end();
+
+        try {
+          await persistUsageAndBilling({
+            studentId: req.student.studentId,
+            model,
+            billingModel: model,
+            upstreamId: upstream._id,
+            usage: capturedUsage,
+            status: streamStatus,
+            billingContext,
+          });
+        } catch (err) {
+          console.error('Failed to persist responses streaming usage:', {
+            studentId: req.student.studentId,
+            model,
+            upstreamId: upstream._id,
+            error: err.message,
+          });
+        }
+
+        releaseOnce();
+      }
+      return;
+    }
+
+    // 非 streaming
+    const data = await upstreamRes.json();
+    const responsesObj = chatToResponsesObject(data, { model });
+    const usage = normalizeOpenAIUsage(data.usage);
+
+    await persistUsageAndBilling({
+      studentId: req.student.studentId,
+      model: data.model || model,
+      billingModel: model,
+      upstreamId: upstream._id,
+      usage,
+      status: upstreamRes.status,
+      billingContext,
+    });
+
+    return res.status(200).json(responsesObj);
+  } catch (err) {
+    console.error('responses proxy error:', err);
+
+    if (!err.usageRecorded) {
+      try {
+        const billing = finalizeBilling(billingContext, model, null);
+        await recordUsage({
+          studentId: req.student.studentId,
+          model,
+          upstreamId: upstream?._id,
+          usage: null,
+          status: 502,
+          ...billing,
+        });
+      } catch (usageErr) {
+        console.error('Failed to record responses error usage:', usageErr);
+      }
+    }
+
+    if (!res.headersSent) {
+      return res.status(502).json(errJson('上游服务异常，请稍后再试', 'api_error'));
+    }
+    return undefined;
+  } finally {
+    upstreamSlot?.release?.();
+    releaseOnce();
+  }
+}
+
+router.post('/responses', apiKeyAuth, (req, res) => handleResponsesProxy(req, res));
 
 module.exports = router;
