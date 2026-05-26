@@ -192,8 +192,77 @@ async function queryUsageStats({
   };
 }
 
+async function queryStudentUsageSummary({ startDate, endDate }) {
+  const { rows: dailyRows, truncated } = await fetchDailyStats({ startDate, endDate });
+
+  const studentMap = new Map();
+
+  for (const row of dailyRows) {
+    const sid = row.studentId;
+    if (!studentMap.has(sid)) {
+      studentMap.set(sid, {
+        studentId: sid,
+        requests: 0,
+        successRequests: 0,
+        errorRequests: 0,
+        totalTokens: 0,
+        billingUnits: 0,
+        billingCostMicroCny: 0,
+        models: new Map(),
+      });
+    }
+    const student = studentMap.get(sid);
+    const tokens = toNumber(row.totalTokens) + toNumber(row.backfillTotalTokens);
+    const reqs = toNumber(row.requests) + toNumber(row.backfillRequests);
+    const successReqs = toNumber(row.successRequests) + toNumber(row.backfillSuccessRequests);
+    const errorReqs = toNumber(row.errorRequests) + toNumber(row.backfillErrorRequests);
+    const units = toNumber(row.billingUnits) + toNumber(row.backfillBillingUnits);
+    const costMicro = toNumber(row.billingCostMicroCny) + toNumber(row.backfillBillingCostMicroCny);
+
+    student.requests += reqs;
+    student.successRequests += successReqs;
+    student.errorRequests += errorReqs;
+    student.totalTokens += tokens;
+    student.billingUnits += units;
+    student.billingCostMicroCny += costMicro;
+
+    const modelName = row.model || '-';
+    if (!student.models.has(modelName)) {
+      student.models.set(modelName, {
+        model: modelName,
+        requests: 0,
+        successRequests: 0,
+        errorRequests: 0,
+        totalTokens: 0,
+        billingUnits: 0,
+        billingCostMicroCny: 0,
+      });
+    }
+    const modelStats = student.models.get(modelName);
+    modelStats.requests += reqs;
+    modelStats.successRequests += successReqs;
+    modelStats.errorRequests += errorReqs;
+    modelStats.totalTokens += tokens;
+    modelStats.billingUnits += units;
+    modelStats.billingCostMicroCny += costMicro;
+  }
+
+  const students = [...studentMap.values()]
+    .map(s => ({
+      ...s,
+      billingCostCny: s.billingCostMicroCny / 1000000,
+      models: [...s.models.values()]
+        .map(m => ({ ...m, billingCostCny: m.billingCostMicroCny / 1000000 }))
+        .sort((a, b) => b.totalTokens - a.totalTokens),
+    }))
+    .sort((a, b) => b.totalTokens - a.totalTokens);
+
+  return { students, truncated };
+}
+
 module.exports = {
   getStatsKey,
   incrementDailyUsageStats,
   queryUsageStats,
+  queryStudentUsageSummary,
 };

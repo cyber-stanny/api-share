@@ -17,6 +17,7 @@ const navItems = [
   { path: '/students', label: '学生管理' },
   { path: '/whitelist', label: '白名单' },
   { path: '/usage', label: '调用日志' },
+  { path: '/usage-summary', label: '用量总览' },
 ];
 
 function isActive(path: string) {

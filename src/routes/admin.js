@@ -8,7 +8,7 @@ const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getUpstreamLimiterMetrics } = require('../services/upstreamLimiter');
 const { getUsageSummary, getOrCreateCounter } = require('../services/quota');
-const { queryUsageStats } = require('../services/usageStats');
+const { queryUsageStats, queryStudentUsageSummary } = require('../services/usageStats');
 const { parseBeijingDateParam } = require('../utils/dateParams');
 const router = express.Router();
 
@@ -408,6 +408,52 @@ router.get('/usage/stats', adminAuth, async (req, res) => {
     return success(res, stats);
   } catch (err) {
     console.error('Usage stats query error:', err);
+    return error(res, '查询失败', 500);
+  }
+});
+
+// 按学生聚合的用量总览
+router.get('/usage/summary', adminAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const start = parseDateParam(startDate, 'startDate');
+    if (start.error) return error(res, start.error);
+    const end = parseDateParam(endDate, 'endDate');
+    if (end.error) return error(res, end.error);
+    if (start.value && end.value && start.value > end.value) {
+      return error(res, 'startDate 不能晚于 endDate');
+    }
+
+    const { students, truncated } = await queryStudentUsageSummary({
+      startDate: start.value,
+      endDate: end.value,
+    });
+
+    // Join student names from users collection
+    const studentIds = students.map(s => s.studentId);
+    const nameMap = new Map();
+    if (studentIds.length > 0) {
+      // Batch query in chunks of 20 (CloudBase `in` operator limit)
+      for (let i = 0; i < studentIds.length; i += 20) {
+        const chunk = studentIds.slice(i, i + 20);
+        const { data: users } = await db.collection('users')
+          .where({ studentId: _.in(chunk) })
+          .field({ studentId: true, name: true })
+          .get();
+        for (const u of users) {
+          nameMap.set(u.studentId, u.name || '');
+        }
+      }
+    }
+
+    const enriched = students.map(s => ({
+      ...s,
+      name: nameMap.get(s.studentId) || '',
+    }));
+
+    return success(res, { students: enriched, truncated });
+  } catch (err) {
+    console.error('Usage summary query error:', err);
     return error(res, '查询失败', 500);
   }
 });
