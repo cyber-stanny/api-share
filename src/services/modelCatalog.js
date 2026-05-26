@@ -10,12 +10,11 @@ const MIMO_MODELS = [
 ];
 
 const ALIYUN_MODELS = [
+  'qwen3.7-max',
   'glm-5.1',
   'kimi-k2.6',
-  'deepseek-v3.2',
   'deepseek-v4-flash',
   'deepseek-v4-pro',
-  'qwen3.7-max',
 ];
 
 const MODEL_METADATA = [

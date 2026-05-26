@@ -269,9 +269,9 @@ async function handleProxy(req, res, protocol) {
           buffer = lines.pop();
 
           for (const line of lines) {
-            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+            if (line.startsWith('data:') && !line.includes('[DONE]')) {
               try {
-                const data = JSON.parse(line.slice(6));
+                const data = JSON.parse(line.slice(5).trimStart());
                 const usage = parseStreamUsage(data);
                 if (usage) capturedUsage = usage;
               } catch { /* ignore parse errors in SSE stream */ }
