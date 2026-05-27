@@ -40,8 +40,8 @@ const config = {
 
   // 默认额度（按 token 计算）
   defaultQuota: {
-    dailyTokenLimit: 500000,    // 每日 50 万 token
-    weeklyTokenLimit: 2000000,  // 每周 200 万 token
+    dailyTokenLimit: 2000000,   // 每日 200 万 token
+    weeklyTokenLimit: 8000000,  // 每周 800 万 token
   },
 
 };

@@ -63,7 +63,7 @@ const MIMO_UPSTREAMS = [
   {
     name: 'Mimo (Anthropic)',
     provider: 'MiMo Token Plan',
-    baseUrl: 'https://token-plan-cn.xiaomimimo.com',
+    baseUrl: 'https://token-plan-cn.xiaomimimo.com/anthropic',
     apiKeyEnv: 'MIMO_API_KEY',
     models: MIMO_MODELS,
     protocol: 'anthropic',
