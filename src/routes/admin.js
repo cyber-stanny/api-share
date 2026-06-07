@@ -7,7 +7,7 @@ const { adminAuth } = require('../middleware/adminAuth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getUpstreamLimiterMetrics } = require('../services/upstreamLimiter');
-const { getUsageSummary, getOrCreateCounter } = require('../services/quota');
+const { getEffectiveTokenQuota, getTokenUsage, getUsageSummary, getOrCreateCounter } = require('../services/quota');
 const { queryUsageStats, queryStudentUsageSummary } = require('../services/usageStats');
 const { parseBeijingDateParam } = require('../utils/dateParams');
 const router = express.Router();
@@ -39,6 +39,52 @@ function parseTokenLimit(value, fieldName) {
   return { value: parsed };
 }
 
+function parseCostLimit(value, fieldName) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return { error: `${fieldName} 必须是非负数字` };
+  }
+  return { value: parsed };
+}
+
+function validateWeeklyLimits({
+  dailyTokenLimit,
+  weeklyTokenLimit,
+  dailyCostLimitCny,
+  weeklyCostLimitCny,
+  tokenFieldPrefix = '',
+  costFieldPrefix = '',
+}) {
+  if (weeklyTokenLimit !== undefined && dailyTokenLimit !== undefined && weeklyTokenLimit < dailyTokenLimit) {
+    return `${tokenFieldPrefix}weeklyTokenLimit 不能小于 ${tokenFieldPrefix}dailyTokenLimit`;
+  }
+  if (weeklyCostLimitCny !== undefined && dailyCostLimitCny !== undefined && weeklyCostLimitCny < dailyCostLimitCny) {
+    return `${costFieldPrefix}weeklyCostLimitCny 不能小于 ${costFieldPrefix}dailyCostLimitCny`;
+  }
+  return null;
+}
+
+function validateQuotaAgainstUsage(quota, counter) {
+  const mimoUsage = getTokenUsage(counter, 'mimo');
+  const aliyunUsage = getTokenUsage(counter, 'aliyun');
+  const deepseekUsage = getTokenUsage(counter, 'deepseek');
+  const checks = [
+    ['mimoDailyTokenLimit', quota.mimoDailyTokenLimit, mimoUsage.dailyTokens, 'MiMo 今日 token 额度不能低于已用量'],
+    ['mimoWeeklyTokenLimit', quota.mimoWeeklyTokenLimit, mimoUsage.weeklyTokens, 'MiMo 本周 token 额度不能低于已用量'],
+    ['aliyunDailyTokenLimit', quota.aliyunDailyTokenLimit, aliyunUsage.dailyTokens, 'Aliyun 今日 token 额度不能低于已用量'],
+    ['aliyunWeeklyTokenLimit', quota.aliyunWeeklyTokenLimit, aliyunUsage.weeklyTokens, 'Aliyun 本周 token 额度不能低于已用量'],
+    ['deepseekDailyCostLimitCny', quota.deepseekDailyCostLimitCny, deepseekUsage.dailyCostCny, 'DeepSeek 今日金额额度不能低于已用量'],
+    ['deepseekWeeklyCostLimitCny', quota.deepseekWeeklyCostLimitCny, deepseekUsage.weeklyCostCny, 'DeepSeek 本周金额额度不能低于已用量'],
+  ];
+
+  for (const [, limit, used, message] of checks) {
+    if (Number(limit) < Number(used)) {
+      return `${message}（已用 ${used}）`;
+    }
+  }
+  return null;
+}
+
 function parseDateParam(value, fieldName) {
   return parseBeijingDateParam(value, fieldName);
 }
@@ -51,7 +97,7 @@ function validateUsageFilters({ studentId, model, provider, groupBy }) {
     return 'model 不能超过 128 个字符';
   }
   if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
-    return 'provider 只支持 mimo / aliyun；minimax / deepseek 仅保留历史查询';
+    return 'provider 只支持 mimo / aliyun / deepseek；minimax 仅保留历史查询';
   }
   if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
     return 'groupBy 只支持 day / week / month / all';
@@ -123,7 +169,7 @@ router.get('/students', adminAuth, async (req, res) => {
         studentId: s.studentId,
         name: s.name,
         apiKeyPrefix: s.apiKeyPrefix,
-        quota: s.quota,
+        quota: getEffectiveTokenQuota(s.quota || config.defaultQuota),
         ...usage,
         createdAt: s.createdAt,
       };
@@ -139,23 +185,49 @@ router.get('/students', adminAuth, async (req, res) => {
 // 调整学生额度
 router.put('/students/:id/quota', adminAuth, async (req, res) => {
   try {
-    const { dailyTokenLimit, weeklyTokenLimit } = req.body;
+    const {
+      dailyTokenLimit,
+      weeklyTokenLimit,
+      mimoDailyTokenLimit,
+      mimoWeeklyTokenLimit,
+      aliyunDailyTokenLimit,
+      aliyunWeeklyTokenLimit,
+      deepseekDailyCostLimitCny,
+      deepseekWeeklyCostLimitCny,
+    } = req.body;
     const update = {};
-    let nextDailyLimit;
-    let nextWeeklyLimit;
 
-    if (dailyTokenLimit !== undefined) {
-      const parsed = parseTokenLimit(dailyTokenLimit, 'dailyTokenLimit');
-      if (parsed.error) return error(res, parsed.error);
-      nextDailyLimit = parsed.value;
-      update['quota.dailyTokenLimit'] = nextDailyLimit;
+    const parseTokenField = (field, value) => {
+      if (value === undefined) return;
+      const parsed = parseTokenLimit(value, field);
+      if (parsed.error) return parsed;
+      update[`quota.${field}`] = parsed.value;
+      return parsed;
+    };
+
+    const parseCostField = (field, value) => {
+      if (value === undefined) return;
+      const parsed = parseCostLimit(value, field);
+      if (parsed.error) return parsed;
+      update[`quota.${field}`] = parsed.value;
+      return parsed;
+    };
+
+    const parsedFields = {
+      dailyTokenLimit: parseTokenField('dailyTokenLimit', dailyTokenLimit),
+      weeklyTokenLimit: parseTokenField('weeklyTokenLimit', weeklyTokenLimit),
+      mimoDailyTokenLimit: parseTokenField('mimoDailyTokenLimit', mimoDailyTokenLimit),
+      mimoWeeklyTokenLimit: parseTokenField('mimoWeeklyTokenLimit', mimoWeeklyTokenLimit),
+      aliyunDailyTokenLimit: parseTokenField('aliyunDailyTokenLimit', aliyunDailyTokenLimit),
+      aliyunWeeklyTokenLimit: parseTokenField('aliyunWeeklyTokenLimit', aliyunWeeklyTokenLimit),
+      deepseekDailyCostLimitCny: parseCostField('deepseekDailyCostLimitCny', deepseekDailyCostLimitCny),
+      deepseekWeeklyCostLimitCny: parseCostField('deepseekWeeklyCostLimitCny', deepseekWeeklyCostLimitCny),
+    };
+
+    for (const parsed of Object.values(parsedFields)) {
+      if (parsed?.error) return error(res, parsed.error);
     }
-    if (weeklyTokenLimit !== undefined) {
-      const parsed = parseTokenLimit(weeklyTokenLimit, 'weeklyTokenLimit');
-      if (parsed.error) return error(res, parsed.error);
-      nextWeeklyLimit = parsed.value;
-      update['quota.weeklyTokenLimit'] = nextWeeklyLimit;
-    }
+
     if (Object.keys(update).length === 0) {
       return error(res, '请提供要调整的额度');
     }
@@ -165,12 +237,41 @@ router.put('/students/:id/quota', adminAuth, async (req, res) => {
     if (!currentUser) {
       return error(res, '用户不存在', 404);
     }
-    const currentQuota = currentUser.quota || config.defaultQuota;
-    const effectiveDailyLimit = nextDailyLimit !== undefined ? nextDailyLimit : currentQuota.dailyTokenLimit;
-    const effectiveWeeklyLimit = nextWeeklyLimit !== undefined ? nextWeeklyLimit : currentQuota.weeklyTokenLimit;
+    const currentQuota = getEffectiveTokenQuota(currentUser.quota || config.defaultQuota);
+    const nextQuota = {
+      ...currentQuota,
+      ...Object.fromEntries(
+        Object.entries(parsedFields)
+          .filter(([, parsed]) => parsed && !parsed.error)
+          .map(([field, parsed]) => [field, parsed.value])
+      ),
+    };
 
-    if (effectiveWeeklyLimit < effectiveDailyLimit) {
-      return error(res, 'weeklyTokenLimit 不能小于 dailyTokenLimit');
+    const validationError = validateWeeklyLimits({
+      dailyTokenLimit: nextQuota.dailyTokenLimit,
+      weeklyTokenLimit: nextQuota.weeklyTokenLimit,
+    }) || validateWeeklyLimits({
+      dailyTokenLimit: nextQuota.mimoDailyTokenLimit,
+      weeklyTokenLimit: nextQuota.mimoWeeklyTokenLimit,
+      tokenFieldPrefix: 'mimo',
+    }) || validateWeeklyLimits({
+      dailyTokenLimit: nextQuota.aliyunDailyTokenLimit,
+      weeklyTokenLimit: nextQuota.aliyunWeeklyTokenLimit,
+      tokenFieldPrefix: 'aliyun',
+    }) || validateWeeklyLimits({
+      dailyCostLimitCny: nextQuota.deepseekDailyCostLimitCny,
+      weeklyCostLimitCny: nextQuota.deepseekWeeklyCostLimitCny,
+      costFieldPrefix: 'deepseek',
+    });
+
+    if (validationError) {
+      return error(res, validationError);
+    }
+
+    const counter = await getOrCreateCounter(currentUser.studentId);
+    const usageError = validateQuotaAgainstUsage(nextQuota, counter);
+    if (usageError) {
+      return error(res, usageError);
     }
 
     await db.collection('users').doc(req.params.id).update(update);
@@ -208,7 +309,19 @@ router.put('/students/:id/reset-password', adminAuth, async (req, res) => {
 // 添加学生（管理员直接添加，不需要白名单）
 router.post('/students', adminAuth, async (req, res) => {
   try {
-    const { studentId, password, name, dailyTokenLimit, weeklyTokenLimit } = req.body;
+    const {
+      studentId,
+      password,
+      name,
+      dailyTokenLimit,
+      weeklyTokenLimit,
+      mimoDailyTokenLimit,
+      mimoWeeklyTokenLimit,
+      aliyunDailyTokenLimit,
+      aliyunWeeklyTokenLimit,
+      deepseekDailyCostLimitCny,
+      deepseekWeeklyCostLimitCny,
+    } = req.body;
 
     if (!isValidShortText(studentId, 64) || !isValidShortText(password, 128)) {
       return error(res, '学号和密码不能为空');
@@ -230,6 +343,52 @@ router.post('/students', adminAuth, async (req, res) => {
     if (weeklyParsed.value < dailyParsed.value) {
       return error(res, 'weeklyTokenLimit 不能小于 dailyTokenLimit');
     }
+
+    const parseOptionalToken = (field, value, fallback) => {
+      if (value === undefined) return { value: fallback };
+      return parseTokenLimit(value, field);
+    };
+    const parseOptionalCost = (field, value, fallback) => {
+      if (value === undefined) return { value: fallback };
+      return parseCostLimit(value, field);
+    };
+
+    const mimoDailyParsed = parseOptionalToken('mimoDailyTokenLimit', mimoDailyTokenLimit, dailyParsed.value);
+    if (mimoDailyParsed.error) return error(res, mimoDailyParsed.error);
+    const mimoWeeklyParsed = parseOptionalToken('mimoWeeklyTokenLimit', mimoWeeklyTokenLimit, weeklyParsed.value);
+    if (mimoWeeklyParsed.error) return error(res, mimoWeeklyParsed.error);
+    const aliyunDailyParsed = parseOptionalToken('aliyunDailyTokenLimit', aliyunDailyTokenLimit, dailyParsed.value);
+    if (aliyunDailyParsed.error) return error(res, aliyunDailyParsed.error);
+    const aliyunWeeklyParsed = parseOptionalToken('aliyunWeeklyTokenLimit', aliyunWeeklyTokenLimit, weeklyParsed.value);
+    if (aliyunWeeklyParsed.error) return error(res, aliyunWeeklyParsed.error);
+    const deepseekDailyParsed = parseOptionalCost(
+      'deepseekDailyCostLimitCny',
+      deepseekDailyCostLimitCny,
+      config.defaultDeepSeekQuota.dailyCostLimitCny
+    );
+    if (deepseekDailyParsed.error) return error(res, deepseekDailyParsed.error);
+    const deepseekWeeklyParsed = parseOptionalCost(
+      'deepseekWeeklyCostLimitCny',
+      deepseekWeeklyCostLimitCny,
+      config.defaultDeepSeekQuota.weeklyCostLimitCny
+    );
+    if (deepseekWeeklyParsed.error) return error(res, deepseekWeeklyParsed.error);
+
+    const validationError = validateWeeklyLimits({
+      dailyTokenLimit: mimoDailyParsed.value,
+      weeklyTokenLimit: mimoWeeklyParsed.value,
+      tokenFieldPrefix: 'mimo',
+    }) || validateWeeklyLimits({
+      dailyTokenLimit: aliyunDailyParsed.value,
+      weeklyTokenLimit: aliyunWeeklyParsed.value,
+      tokenFieldPrefix: 'aliyun',
+    }) || validateWeeklyLimits({
+      dailyCostLimitCny: deepseekDailyParsed.value,
+      weeklyCostLimitCny: deepseekWeeklyParsed.value,
+      costFieldPrefix: 'deepseek',
+    });
+
+    if (validationError) return error(res, validationError);
 
     // 检查是否已存在
     const { data: existing } = await db.collection('users')
@@ -255,6 +414,12 @@ router.post('/students', adminAuth, async (req, res) => {
       quota: {
         dailyTokenLimit: dailyParsed.value,
         weeklyTokenLimit: weeklyParsed.value,
+        mimoDailyTokenLimit: mimoDailyParsed.value,
+        mimoWeeklyTokenLimit: mimoWeeklyParsed.value,
+        aliyunDailyTokenLimit: aliyunDailyParsed.value,
+        aliyunWeeklyTokenLimit: aliyunWeeklyParsed.value,
+        deepseekDailyCostLimitCny: deepseekDailyParsed.value,
+        deepseekWeeklyCostLimitCny: deepseekWeeklyParsed.value,
       },
       createdAt: new Date(),
     });

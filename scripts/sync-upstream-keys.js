@@ -2,11 +2,11 @@
  * 将环境变量中的上游 API Key 同步到 CloudBase 的 upstreams 集合
  *
  * 用法：
- *   CLOUDBASE_ENV_ID=xxx ALIYUN_API_KEY=xxx node scripts/sync-upstream-keys.js
+ *   CLOUDBASE_ENV_ID=xxx DEEPSEEK_API_KEY=xxx node scripts/sync-upstream-keys.js
  *
  * 说明：
  * - 不会把密钥写入仓库，只更新数据库中的 upstream 记录
- * - 会同步当前环境变量中已设置的 MiMo / Aliyun Key
+ * - 会同步当前环境变量中已设置的 MiMo / Aliyun / DeepSeek Key
  */
 require('dotenv').config();
 const cloudbase = require('@cloudbase/node-sdk');
@@ -35,7 +35,7 @@ async function main() {
   }
 
   if (syncPresets.length === 0) {
-    console.error('请至少设置一个上游 Key 环境变量：MIMO_API_KEY / ALIYUN_API_KEY');
+    console.error('请至少设置一个上游 Key 环境变量：MIMO_API_KEY / ALIYUN_API_KEY / DEEPSEEK_API_KEY');
     process.exit(1);
   }
 

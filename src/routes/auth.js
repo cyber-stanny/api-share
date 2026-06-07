@@ -7,7 +7,7 @@ const { studentAuth } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { success, error } = require('../utils/response');
 const { getAvailableModelDetails } = require('../services/upstream');
-const { getUsageSummary, getOrCreateCounter } = require('../services/quota');
+const { getEffectiveTokenQuota, getUsageSummary, getOrCreateCounter } = require('../services/quota');
 const { queryUsageStats } = require('../services/usageStats');
 const { parseBeijingDateParam } = require('../utils/dateParams');
 
@@ -57,7 +57,7 @@ function validateUsageFilters({ model, provider, groupBy }) {
     return 'model 不能超过 128 个字符';
   }
   if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
-    return 'provider 只支持 mimo / aliyun；minimax / deepseek 仅保留历史查询';
+    return 'provider 只支持 mimo / aliyun / deepseek；minimax 仅保留历史查询';
   }
   if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
     return 'groupBy 只支持 day / week / month / all';
@@ -113,7 +113,7 @@ router.post('/register', studentRegisterLimiter, async (req, res) => {
       passwordHash,
       apiKeyHash,
       apiKeyPrefix,
-      quota: config.defaultQuota,
+      quota: getEffectiveTokenQuota(config.defaultQuota),
       createdAt: new Date(),
     });
 
@@ -246,7 +246,7 @@ router.get('/profile', studentAuth, async (req, res) => {
 
     const user = users[0];
     const counter = await getOrCreateCounter(req.student.studentId);
-    const quota = user.quota || config.defaultQuota;
+    const quota = getEffectiveTokenQuota(user.quota || config.defaultQuota);
     const usage = getUsageSummary(counter);
 
     return success(res, {
@@ -275,7 +275,7 @@ router.get('/usage', studentAuth, async (req, res) => {
       return error(res, 'model 不能超过 128 个字符');
     }
     if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
-      return error(res, 'provider 只支持 mimo / aliyun；minimax / deepseek 仅保留历史查询');
+      return error(res, 'provider 只支持 mimo / aliyun / deepseek；minimax 仅保留历史查询');
     }
     const start = parseDateParam(startDate, 'startDate');
     if (start.error) return error(res, start.error);

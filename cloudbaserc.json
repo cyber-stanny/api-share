@@ -13,7 +13,8 @@
         "CORS_ORIGINS": "{{CORS_ORIGINS}}",
         "PROXY_ENABLED": "{{PROXY_ENABLED}}",
         "MIMO_API_KEY": "{{MIMO_API_KEY}}",
-        "ALIYUN_API_KEY": "{{ALIYUN_API_KEY}}"
+        "ALIYUN_API_KEY": "{{ALIYUN_API_KEY}}",
+        "DEEPSEEK_API_KEY": "{{DEEPSEEK_API_KEY}}"
       }
     }
   ]

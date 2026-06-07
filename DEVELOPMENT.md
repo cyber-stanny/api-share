@@ -92,7 +92,8 @@ api-share/
 | 上游 | OpenAI (`/v1/chat/completions`) | Anthropic (`/v1/messages`) |
 |------|------|------|
 | Mimo | mimo-v2.5-pro, mimo-v2.5, mimo-v2-pro, mimo-v2-omni | mimo-v2.5-pro, mimo-v2.5, mimo-v2-pro, mimo-v2-omni |
-| Aliyun Token Plan | glm-5.1, kimi-k2.6, deepseek-v3.2, deepseek-v4-flash, deepseek-v4-pro, qwen3.7-max | glm-5.1, kimi-k2.6, deepseek-v3.2, deepseek-v4-flash, deepseek-v4-pro, qwen3.7-max |
+| Aliyun Token Plan | glm-5.1, kimi-k2.6, qwen3.7-max | glm-5.1, kimi-k2.6, qwen3.7-max |
+| DeepSeek Official API | deepseek-v4-flash, deepseek-v4-pro | deepseek-v4-flash, deepseek-v4-pro |
 
 学生端默认示例使用 `qwen3.7-max`。Aliyun OpenAI 上游记录保存的 `baseUrl` 不带结尾 `/v1`，因为代理转发时会追加 `/v1/chat/completions`；对外提供的 OpenAI Base URL 仍是带 `/v1` 的形式。
 
@@ -100,7 +101,8 @@ api-share/
 
 - MiMo：按 token 额度统计
 - MiMo `mimo-v2.5`：按 2 倍 token 计入额度
-- Aliyun Token Plan：按独立 token 额度统计；其中 DeepSeek 模型也归入 `aliyun`，不再使用旧 DeepSeek 供应商的金额口径
+- Aliyun Token Plan：按独立 token 额度统计，不再承载 DeepSeek 模型
+- DeepSeek Official API：按独立 token 额度统计，当前按 10 倍 token 计入额度，使用官方 DeepSeek API Key
 
 注意：当前项目只代理文本接口 `POST /v1/chat/completions` 和 `POST /v1/messages`，所以像 MiMo 的 TTS 这类非文本模型会被自动过滤，不会出现在学生端列表里，也不会被 `/v1/models` 暴露出来。
 
@@ -142,7 +144,7 @@ api-share/
 ### CloudBase 函数部署
 
 1. 在腾讯云创建 CloudBase 环境
-2. 在服务器 `.env` 中配置：CLOUDBASE_ENV_ID, JWT_SECRET, ADMIN_INIT_PASSWORD, MIMO_API_KEY, ALIYUN_API_KEY, TENCENT_SECRET_ID, TENCENT_SECRET_KEY
+2. 在服务器 `.env` 中配置：CLOUDBASE_ENV_ID, JWT_SECRET, ADMIN_INIT_PASSWORD, MIMO_API_KEY, ALIYUN_API_KEY, DEEPSEEK_API_KEY, TENCENT_SECRET_ID, TENCENT_SECRET_KEY
    - 可选：CORS_ORIGINS, PROXY_ENABLED
 3. 通过 SCP 将代码同步到服务器，在服务器上运行 `npm run deploy`
 4. 首次部署后运行初始化脚本：

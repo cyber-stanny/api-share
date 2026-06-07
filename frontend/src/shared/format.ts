@@ -10,7 +10,7 @@ export function fmtTokens(n: number | null | undefined): string {
 
 export function fmtCny(n: number | null | undefined): string {
   if (!n) return '0';
-  return (n / 100).toFixed(2);
+  return Number(n).toFixed(2);
 }
 
 export function fmtDate(d: string | Date | null | undefined): string {
@@ -29,7 +29,7 @@ export function providerLabel(provider: string): string {
     'MiMo': 'MiMo Token Plan',
     'aliyun': 'Aliyun Token Plan',
     'minimax': 'MiniMax (历史)',
-    'deepseek': 'DeepSeek (历史)',
+    'deepseek': 'DeepSeek Official API',
   };
   return map[provider] || provider;
 }

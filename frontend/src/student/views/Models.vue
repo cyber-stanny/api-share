@@ -14,8 +14,8 @@ const publicModelCards = [
   { id: 'qwen3.7-max', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'glm-5.1', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'kimi-k2.6', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-flash', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-pro', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-flash', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-pro', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
 ];
 
 const modelList = computed(() => dashboard.models.length ? dashboard.models : publicModelCards);

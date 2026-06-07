@@ -1,30 +1,28 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import type { Quota } from '@shared/api/types';
 
 const props = defineProps<{
   visible: boolean;
   studentId: string;
-  currentDaily: number;
-  currentWeekly: number;
+  quota: Quota;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  save: [daily: number, weekly: number];
+  save: [quota: Quota];
 }>();
 
-const daily = ref(props.currentDaily);
-const weekly = ref(props.currentWeekly);
+const form = ref<Quota>({ ...props.quota });
 
 watch(() => props.visible, (v) => {
   if (v) {
-    daily.value = props.currentDaily;
-    weekly.value = props.currentWeekly;
+    form.value = { ...props.quota };
   }
 });
 
 function handleSave() {
-  emit('save', daily.value, weekly.value);
+  emit('save', { ...form.value });
 }
 </script>
 
@@ -33,15 +31,39 @@ function handleSave() {
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="modal">
         <h3>调整额度 - {{ studentId }}</h3>
-        <div class="section-label">每个 Token Plan 供应商的 token 限额</div>
+        <div class="section-label">MiMo token 限额</div>
         <div class="form-row">
           <div class="field">
             <label>每日 token 上限</label>
-            <input v-model.number="daily" class="input" type="number" min="0" />
+            <input v-model.number="form.mimoDailyTokenLimit" class="input" type="number" min="0" />
           </div>
           <div class="field">
             <label>每周 token 上限</label>
-            <input v-model.number="weekly" class="input" type="number" min="0" />
+            <input v-model.number="form.mimoWeeklyTokenLimit" class="input" type="number" min="0" />
+          </div>
+        </div>
+
+        <div class="section-label">Aliyun Token Plan 限额</div>
+        <div class="form-row">
+          <div class="field">
+            <label>每日 token 上限</label>
+            <input v-model.number="form.aliyunDailyTokenLimit" class="input" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label>每周 token 上限</label>
+            <input v-model.number="form.aliyunWeeklyTokenLimit" class="input" type="number" min="0" />
+          </div>
+        </div>
+
+        <div class="section-label">DeepSeek 金额限额</div>
+        <div class="form-row">
+          <div class="field">
+            <label>每日金额上限（元）</label>
+            <input v-model.number="form.deepseekDailyCostLimitCny" class="input" type="number" min="0" step="0.01" />
+          </div>
+          <div class="field">
+            <label>每周金额上限（元）</label>
+            <input v-model.number="form.deepseekWeeklyCostLimitCny" class="input" type="number" min="0" step="0.01" />
           </div>
         </div>
         <div class="modal-actions">
@@ -73,6 +95,7 @@ function handleSave() {
   border-radius: 12px;
   padding: 28px;
   min-width: 440px;
+  max-width: min(560px, calc(100vw - 32px));
   box-shadow: 0 12px 36px rgba(45,45,45,.08);
 }
 .modal h3 { margin: 0 0 16px; font: 700 18px var(--serif); }

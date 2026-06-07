@@ -6,11 +6,23 @@ export interface User {
   quota: {
     dailyTokenLimit: number;
     weeklyTokenLimit: number;
+    mimoDailyTokenLimit: number;
+    mimoWeeklyTokenLimit: number;
+    aliyunDailyTokenLimit: number;
+    aliyunWeeklyTokenLimit: number;
+    deepseekDailyCostLimitCny: number;
+    deepseekWeeklyCostLimitCny: number;
   };
   dailyTokensUsed: number;
   weeklyTokensUsed: number;
   aliyunDailyTokensUsed: number;
   aliyunWeeklyTokensUsed: number;
+  deepseekDailyTokensUsed: number;
+  deepseekWeeklyTokensUsed: number;
+  deepseekDailyCostMicroCny: number;
+  deepseekWeeklyCostMicroCny: number;
+  deepseekDailyCostCny: number;
+  deepseekWeeklyCostCny: number;
   createdAt: string;
 }
 
@@ -68,6 +80,12 @@ export interface ModelInfo {
 export interface Quota {
   dailyTokenLimit: number;
   weeklyTokenLimit: number;
+  mimoDailyTokenLimit: number;
+  mimoWeeklyTokenLimit: number;
+  aliyunDailyTokenLimit: number;
+  aliyunWeeklyTokenLimit: number;
+  deepseekDailyCostLimitCny: number;
+  deepseekWeeklyCostLimitCny: number;
 }
 
 export interface WhitelistItem {

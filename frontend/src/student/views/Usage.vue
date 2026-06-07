@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useDashboardStore } from '../stores/dashboard';
-import { fmt, fmtDate, pct } from '@shared/format';
+import { fmt, fmtCny, fmtDate, pct } from '@shared/format';
 import { escapeHtml } from '@shared/api/client';
 import DateRangePicker from '@shared/components/DateRangePicker.vue';
 import { getShanghaiTodayRange } from '@shared/timeRange';
@@ -84,14 +84,14 @@ onMounted(() => {
           <div class="metric">
             <div class="metric-label">今日</div>
             <div class="metric-value">{{ fmt(dashboard.profile.dailyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.dailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.dailyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: mimiPct(dashboard.profile.dailyTokensUsed, dashboard.profile.quota?.dailyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.dailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.mimoDailyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: mimiPct(dashboard.profile.dailyTokensUsed, dashboard.profile.quota?.mimoDailyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
           </div>
           <div class="metric">
             <div class="metric-label">本周</div>
             <div class="metric-value">{{ fmt(dashboard.profile.weeklyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.weeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.weeklyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: mimiPct(dashboard.profile.weeklyTokensUsed, dashboard.profile.quota?.weeklyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.weeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.mimoWeeklyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: mimiPct(dashboard.profile.weeklyTokensUsed, dashboard.profile.quota?.mimoWeeklyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
           </div>
         </div>
         <div class="provider-footer">mimo-v2.5-pro · 2x token calculation</div>
@@ -110,17 +110,43 @@ onMounted(() => {
           <div class="metric">
             <div class="metric-label">今日</div>
             <div class="metric-value">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.dailyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunDailyTokensUsed, dashboard.profile.quota?.dailyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.aliyunDailyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunDailyTokensUsed, dashboard.profile.quota?.aliyunDailyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
           </div>
           <div class="metric">
             <div class="metric-label">本周</div>
             <div class="metric-value">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.weeklyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunWeeklyTokensUsed, dashboard.profile.quota?.weeklyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
+            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.aliyunWeeklyTokenLimit || 0) }} tokens</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunWeeklyTokensUsed, dashboard.profile.quota?.aliyunWeeklyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
           </div>
         </div>
-        <div class="provider-footer">GLM · Kimi · DeepSeek · Qwen</div>
+        <div class="provider-footer">GLM · Kimi · Qwen</div>
+      </div>
+
+      <!-- DeepSeek Card -->
+      <div class="provider-card">
+        <div class="provider-header">
+          <div class="provider-title">
+            <span class="dot" style="background:#111827"></span>
+            <span>DeepSeek Official API</span>
+          </div>
+          <a href="#" class="detail-link" @click.prevent="showProviderToday('deepseek')">查看详情 →</a>
+        </div>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-label">今日</div>
+            <div class="metric-value">¥{{ fmtCny(dashboard.profile.deepseekDailyCostCny) }}</div>
+            <div class="metric-ratio">¥{{ fmtCny(dashboard.profile.deepseekDailyCostCny) }} / ¥{{ fmtCny(dashboard.profile.quota?.deepseekDailyCostLimitCny || 0) }}</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.deepseekDailyCostCny, dashboard.profile.quota?.deepseekDailyCostLimitCny || 0) + '%', background: '#111827' }"></span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">本周</div>
+            <div class="metric-value">¥{{ fmtCny(dashboard.profile.deepseekWeeklyCostCny) }}</div>
+            <div class="metric-ratio">¥{{ fmtCny(dashboard.profile.deepseekWeeklyCostCny) }} / ¥{{ fmtCny(dashboard.profile.quota?.deepseekWeeklyCostLimitCny || 0) }}</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.deepseekWeeklyCostCny, dashboard.profile.quota?.deepseekWeeklyCostLimitCny || 0) + '%', background: '#111827' }"></span></div>
+          </div>
+        </div>
+        <div class="provider-footer">deepseek-v4-flash · deepseek-v4-pro</div>
       </div>
     </div>
 
@@ -144,7 +170,7 @@ onMounted(() => {
           <option value="mimo">MiMo</option>
           <option value="aliyun">Aliyun Token Plan</option>
           <option value="minimax">MiniMax（历史）</option>
-          <option value="deepseek">DeepSeek（历史）</option>
+          <option value="deepseek">DeepSeek Official API</option>
         </select>
         <input
           v-model="model"

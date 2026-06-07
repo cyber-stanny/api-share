@@ -88,7 +88,7 @@ onMounted(loadUsage);
           <option value="mimo">MiMo</option>
           <option value="aliyun">Aliyun Token Plan</option>
           <option value="minimax">MiniMax（历史）</option>
-          <option value="deepseek">DeepSeek（历史）</option>
+          <option value="deepseek">DeepSeek Official API</option>
         </select>
         <input
           v-model="model"

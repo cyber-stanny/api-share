@@ -17,12 +17,21 @@ function isAliyunUpstream(upstream) {
   return name.includes('aliyun') || baseUrl.includes('maas.aliyuncs.com');
 }
 
+function isDeepSeekUpstream(upstream) {
+  const name = String(upstream?.name || '').toLowerCase();
+  const baseUrl = String(upstream?.baseUrl || '').toLowerCase();
+  return name.includes('deepseek') || baseUrl.includes('api.deepseek.com');
+}
+
 function getLimitProfile(upstream) {
   if (isMimoUpstream(upstream)) {
     return { key: 'mimo', ...config.upstreamLimits.mimo };
   }
   if (isAliyunUpstream(upstream)) {
     return { key: 'aliyun', ...config.upstreamLimits.aliyun };
+  }
+  if (isDeepSeekUpstream(upstream)) {
+    return { key: 'deepseek', ...config.upstreamLimits.deepseek };
   }
   return null;
 }
@@ -236,5 +245,6 @@ module.exports = {
   acquireUpstreamSlot,
   isMimoUpstream,
   isAliyunUpstream,
+  isDeepSeekUpstream,
   getUpstreamLimiterMetrics,
 };

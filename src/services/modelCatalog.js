@@ -13,9 +13,25 @@ const ALIYUN_MODELS = [
   'qwen3.7-max',
   'glm-5.1',
   'kimi-k2.6',
+];
+
+const DEEPSEEK_MODELS = [
   'deepseek-v4-flash',
   'deepseek-v4-pro',
 ];
+
+const DEEPSEEK_PRICING_PER_MILLION_CNY = {
+  'deepseek-v4-flash': {
+    inputCacheHit: 0.02,
+    inputCacheMiss: 1,
+    output: 2,
+  },
+  'deepseek-v4-pro': {
+    inputCacheHit: 0.025,
+    inputCacheMiss: 3,
+    output: 6,
+  },
+};
 
 const MODEL_METADATA = [
   { id: 'mimo-v2.5-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
@@ -26,6 +42,7 @@ const MODEL_METADATA = [
   { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
   ...ALIYUN_MODELS.map(id => ({ id, provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] })),
+  ...DEEPSEEK_MODELS.map(id => ({ id, provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] })),
 ];
 
 const NON_TEXT_MODELS = new Set([
@@ -46,7 +63,9 @@ function isTextModelSupported(id) {
 }
 
 function isUpstreamSupported(upstream) {
-  return upstream?.provider === 'MiMo Token Plan' || upstream?.provider === 'Aliyun Token Plan';
+  return upstream?.provider === 'MiMo Token Plan'
+    || upstream?.provider === 'Aliyun Token Plan'
+    || upstream?.provider === 'DeepSeek Official API';
 }
 
 const MIMO_UPSTREAMS = [
@@ -96,7 +115,30 @@ const ALIYUN_UPSTREAMS = [
   },
 ];
 
-const UPSTREAM_PRESETS = [...MIMO_UPSTREAMS, ...ALIYUN_UPSTREAMS];
+const DEEPSEEK_UPSTREAMS = [
+  {
+    name: 'DeepSeek Official (OpenAI)',
+    provider: 'DeepSeek Official API',
+    baseUrl: 'https://api.deepseek.com',
+    apiKeyEnv: 'DEEPSEEK_API_KEY',
+    models: DEEPSEEK_MODELS,
+    protocol: 'openai',
+    enabled: true,
+    priority: 30,
+  },
+  {
+    name: 'DeepSeek Official (Anthropic)',
+    provider: 'DeepSeek Official API',
+    baseUrl: 'https://api.deepseek.com/anthropic',
+    apiKeyEnv: 'DEEPSEEK_API_KEY',
+    models: DEEPSEEK_MODELS,
+    protocol: 'anthropic',
+    enabled: true,
+    priority: 30,
+  },
+];
+
+const UPSTREAM_PRESETS = [...MIMO_UPSTREAMS, ...ALIYUN_UPSTREAMS, ...DEEPSEEK_UPSTREAMS];
 
 const MODEL_ORDER = MODEL_METADATA.map(model => model.id);
 
@@ -112,14 +154,22 @@ function getMimoTokenMultiplier(modelId) {
   return modelId === 'mimo-v2.5' ? 2 : 1;
 }
 
+function getDeepSeekPricing(modelId) {
+  return DEEPSEEK_PRICING_PER_MILLION_CNY[modelId] || null;
+}
+
 module.exports = {
   MIMO_MODELS,
   ALIYUN_MODELS,
+  DEEPSEEK_MODELS,
+  DEEPSEEK_PRICING_PER_MILLION_CNY,
   MODEL_METADATA,
   MODEL_ORDER,
   MIMO_UPSTREAMS,
   ALIYUN_UPSTREAMS,
+  DEEPSEEK_UPSTREAMS,
   UPSTREAM_PRESETS,
+  getDeepSeekPricing,
   getModelMetadata,
   getMimoTokenMultiplier,
   isTextModelSupported,

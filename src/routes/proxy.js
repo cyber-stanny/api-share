@@ -1,7 +1,7 @@
 const express = require('express');
 const { apiKeyAuth } = require('../middleware/auth');
 const { findUpstream, getAvailableModelDetails } = require('../services/upstream');
-const { addTokenUsage, checkTokenQuota } = require('../services/quota');
+const { addTokenUsage, checkDeepSeekCostQuota, checkTokenQuota } = require('../services/quota');
 const { checkRateLimit, acquireConcurrent, releaseConcurrent } = require('../services/rateLimit');
 const { acquireUpstreamSlot } = require('../services/upstreamLimiter');
 const { recordUsage } = require('../services/usage');
@@ -58,6 +58,13 @@ function normalizeAnthropicUsage(usage) {
     prompt_cache_hit_tokens: cacheReadInputTokens,
     prompt_cache_miss_tokens: Math.max(0, inputTokens - cacheReadInputTokens),
   };
+}
+
+async function checkBillingQuota(studentId, billingContext) {
+  if (billingContext?.billingProvider === 'deepseek') {
+    return checkDeepSeekCostQuota(studentId);
+  }
+  return checkTokenQuota(studentId, billingContext?.billingProvider || 'mimo');
 }
 
 async function persistUsageAndBilling({
@@ -187,7 +194,7 @@ async function handleProxy(req, res, protocol) {
     }
 
     billingContext = createBillingContext(upstream, model);
-    const quotaResult = await checkTokenQuota(req.student.studentId, billingContext.billingProvider);
+    const quotaResult = await checkBillingQuota(req.student.studentId, billingContext);
     if (!quotaResult.allowed) {
       res.set('Retry-After', '86400');
       return res.status(429).json(proto.rateLimitMsg(quotaResult.reason));

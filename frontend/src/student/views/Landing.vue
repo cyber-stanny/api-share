@@ -26,8 +26,8 @@ const publicModelCards: ModelInfo[] = [
   { id: 'qwen3.7-max', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'glm-5.1', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'kimi-k2.6', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-flash', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'deepseek-v4-pro', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-flash', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
+  { id: 'deepseek-v4-pro', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
 ];
 
 const publicGroups = groupModelsByProvider(publicModelCards);
@@ -56,7 +56,7 @@ async function handleAuthSuccess(apiKey?: string) {
     <TopBar />
     <section class="landing">
       <div class="hero">
-        <div class="eyebrow">Token Plan Gateway · MiMo / Aliyun</div>
+        <div class="eyebrow">Token Plan Gateway · MiMo / Aliyun / DeepSeek</div>
         <h1>学生专属的大模型 API 入口</h1>
         <p>用白名单学号注册，领取专属 API Key。当前开放 MiMo 以及阿里云 Token Plan 文本模型，直接接入 Claude Code 或 OpenAI 兼容客户端。</p>
         <div class="actions">

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-LLM API proxy platform (大模型 API 中转平台) for students. Students register with whitelisted student IDs, receive an API Key, and proxy requests to upstream LLM providers (MiMo and Aliyun Token Plan). Supports OpenAI-compatible format (`/v1/chat/completions`) and Anthropic format (`/v1/messages`).
+LLM API proxy platform (大模型 API 中转平台) for students. Students register with whitelisted student IDs, receive an API Key, and proxy requests to upstream LLM providers (MiMo, Aliyun Token Plan, and DeepSeek Official API). Supports OpenAI-compatible format (`/v1/chat/completions`) and Anthropic format (`/v1/messages`).
 
 **Stack**: Node.js + Express + serverless-http + Tencent CloudBase (serverless cloud functions + document database) + Vue 3/Vite frontend in `frontend/`
 
@@ -73,7 +73,7 @@ The core of the system. Each request goes through: auth → quota check → rate
 
 ### Token-Based Quota (`services/quota.js`)
 
-Uses a `token_counters` collection for fast lookups instead of summing usage_records. Each student has a counter document with separate MiMo and Aliyun token fields, incremented atomically via `_.inc()`. Deprecated provider fields may remain in historical documents but are not written by new requests. Counters auto-reset when day/week boundaries are crossed.
+Uses a `token_counters` collection for fast lookups instead of summing usage_records. Each student has a counter document with separate MiMo, Aliyun, and DeepSeek token fields, incremented atomically via `_.inc()`. Deprecated provider fields may remain in historical documents but are not written by new requests. Counters auto-reset when day/week boundaries are crossed.
 
 ### Upstream Routing (`services/upstream.js`)
 

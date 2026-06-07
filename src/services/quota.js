@@ -23,6 +23,17 @@ const TOKEN_PROVIDERS = {
     lastDay: 'lastAliyunDayReset',
     lastWeek: 'lastAliyunWeekReset',
   },
+  deepseek: {
+    label: 'DeepSeek',
+    daily: 'deepseekDailyTokens',
+    weekly: 'deepseekWeeklyTokens',
+    lastDay: 'lastDeepseekDayReset',
+    lastWeek: 'lastDeepseekWeekReset',
+    legacyLastDay: 'lastDeepSeekDayReset',
+    legacyLastWeek: 'lastDeepSeekWeekReset',
+    dailyCost: 'deepseekDailyCostMicroCny',
+    weeklyCost: 'deepseekWeeklyCostMicroCny',
+  },
 };
 
 function getDayStart() {
@@ -133,12 +144,20 @@ function createInitialCounter(studentId, dayStart, weekStart) {
     mimoWeeklyTokens: 0,
     aliyunDailyTokens: 0,
     aliyunWeeklyTokens: 0,
+    deepseekDailyTokens: 0,
+    deepseekWeeklyTokens: 0,
+    deepseekDailyCostMicroCny: 0,
+    deepseekWeeklyCostMicroCny: 0,
     lastDayReset: dayStart,
     lastWeekReset: weekStart,
     lastMimoDayReset: dayStart,
     lastMimoWeekReset: weekStart,
     lastAliyunDayReset: dayStart,
     lastAliyunWeekReset: weekStart,
+    lastDeepseekDayReset: dayStart,
+    lastDeepseekWeekReset: weekStart,
+    lastDeepSeekDayReset: dayStart,
+    lastDeepSeekWeekReset: weekStart,
   };
 }
 
@@ -147,6 +166,7 @@ function normalizeCounter(counter, dayStart, weekStart) {
 
   normalizeTokenProvider(counter, update, 'mimo', dayStart, weekStart);
   normalizeTokenProvider(counter, update, 'aliyun', dayStart, weekStart);
+  normalizeTokenProvider(counter, update, 'deepseek', dayStart, weekStart);
 
   return update;
 }
@@ -185,13 +205,56 @@ async function getOrCreateCounter(studentId) {
 }
 
 function getEffectiveTokenQuota(quota = {}) {
-  const dailyTokenLimit = Number.isInteger(Number(quota.dailyTokenLimit))
-    ? Number(quota.dailyTokenLimit)
+  const effectiveQuota = quota || {};
+  const dailyTokenLimit = Number.isInteger(Number(effectiveQuota.dailyTokenLimit))
+    ? Number(effectiveQuota.dailyTokenLimit)
     : config.defaultQuota.dailyTokenLimit;
-  const weeklyTokenLimit = Number.isInteger(Number(quota.weeklyTokenLimit))
-    ? Number(quota.weeklyTokenLimit)
+  const weeklyTokenLimit = Number.isInteger(Number(effectiveQuota.weeklyTokenLimit))
+    ? Number(effectiveQuota.weeklyTokenLimit)
     : config.defaultQuota.weeklyTokenLimit;
-  return { dailyTokenLimit, weeklyTokenLimit };
+  const mimoDailyTokenLimit = Number.isInteger(Number(effectiveQuota.mimoDailyTokenLimit))
+    ? Number(effectiveQuota.mimoDailyTokenLimit)
+    : dailyTokenLimit;
+  const mimoWeeklyTokenLimit = Number.isInteger(Number(effectiveQuota.mimoWeeklyTokenLimit))
+    ? Number(effectiveQuota.mimoWeeklyTokenLimit)
+    : weeklyTokenLimit;
+  const aliyunDailyTokenLimit = Number.isInteger(Number(effectiveQuota.aliyunDailyTokenLimit))
+    ? Number(effectiveQuota.aliyunDailyTokenLimit)
+    : dailyTokenLimit;
+  const aliyunWeeklyTokenLimit = Number.isInteger(Number(effectiveQuota.aliyunWeeklyTokenLimit))
+    ? Number(effectiveQuota.aliyunWeeklyTokenLimit)
+    : weeklyTokenLimit;
+  const deepseekDailyCostLimitCny = Number.isFinite(Number(effectiveQuota.deepseekDailyCostLimitCny))
+    ? Number(effectiveQuota.deepseekDailyCostLimitCny)
+    : config.defaultDeepSeekQuota.dailyCostLimitCny;
+  const deepseekWeeklyCostLimitCny = Number.isFinite(Number(effectiveQuota.deepseekWeeklyCostLimitCny))
+    ? Number(effectiveQuota.deepseekWeeklyCostLimitCny)
+    : config.defaultDeepSeekQuota.weeklyCostLimitCny;
+
+  return {
+    dailyTokenLimit,
+    weeklyTokenLimit,
+    mimoDailyTokenLimit,
+    mimoWeeklyTokenLimit,
+    aliyunDailyTokenLimit,
+    aliyunWeeklyTokenLimit,
+    deepseekDailyCostLimitCny,
+    deepseekWeeklyCostLimitCny,
+  };
+}
+
+function getProviderTokenQuota(quota = {}, providerKey = 'mimo') {
+  const effective = getEffectiveTokenQuota(quota);
+  if (providerKey === 'aliyun') {
+    return {
+      dailyTokenLimit: effective.aliyunDailyTokenLimit,
+      weeklyTokenLimit: effective.aliyunWeeklyTokenLimit,
+    };
+  }
+  return {
+    dailyTokenLimit: effective.mimoDailyTokenLimit,
+    weeklyTokenLimit: effective.mimoWeeklyTokenLimit,
+  };
 }
 
 function getTokenUsage(counter = {}, providerKey = 'mimo') {
@@ -214,6 +277,7 @@ function getTokenUsage(counter = {}, providerKey = 'mimo') {
 function getUsageSummary(counter = {}) {
   const mimo = getTokenUsage(counter, 'mimo');
   const aliyun = getTokenUsage(counter, 'aliyun');
+  const deepseek = getTokenUsage(counter, 'deepseek');
 
   return {
     dailyTokensUsed: mimo.dailyTokens,
@@ -222,6 +286,12 @@ function getUsageSummary(counter = {}) {
     mimoWeeklyTokensUsed: mimo.weeklyTokens,
     aliyunDailyTokensUsed: aliyun.dailyTokens,
     aliyunWeeklyTokensUsed: aliyun.weeklyTokens,
+    deepseekDailyTokensUsed: deepseek.dailyTokens,
+    deepseekWeeklyTokensUsed: deepseek.weeklyTokens,
+    deepseekDailyCostMicroCny: deepseek.dailyCostMicroCny,
+    deepseekWeeklyCostMicroCny: deepseek.weeklyCostMicroCny,
+    deepseekDailyCostCny: deepseek.dailyCostCny,
+    deepseekWeeklyCostCny: deepseek.weeklyCostCny,
   };
 }
 
@@ -232,7 +302,7 @@ async function checkTokenQuota(studentId, providerKey = 'mimo') {
   }
 
   const user = data[0];
-  const quota = getEffectiveTokenQuota(user.quota || config.defaultQuota);
+  const quota = getProviderTokenQuota(user.quota || config.defaultQuota, providerKey);
   const counter = await getOrCreateCounter(studentId);
   const usage = getTokenUsage(counter, providerKey);
   const label = getProviderFields(providerKey).label;
@@ -249,6 +319,40 @@ async function checkTokenQuota(studentId, providerKey = 'mimo') {
     allowed: true,
     dailyRemaining: quota.dailyTokenLimit - usage.dailyTokens,
     weeklyRemaining: quota.weeklyTokenLimit - usage.weeklyTokens,
+  };
+}
+
+function getDeepSeekCostQuota(quota = {}) {
+  const effective = getEffectiveTokenQuota(quota);
+  return {
+    dailyCostLimitCny: effective.deepseekDailyCostLimitCny,
+    weeklyCostLimitCny: effective.deepseekWeeklyCostLimitCny,
+  };
+}
+
+async function checkDeepSeekCostQuota(studentId) {
+  const { data } = await db.collection('users').where({ studentId }).limit(1).get();
+  if (!data || data.length === 0) {
+    return { allowed: false, reason: '用户不存在' };
+  }
+
+  const user = data[0];
+  const quota = getDeepSeekCostQuota(user.quota || config.defaultQuota);
+  const counter = await getOrCreateCounter(studentId);
+  const usage = getTokenUsage(counter, 'deepseek');
+
+  if (usage.dailyCostCny >= quota.dailyCostLimitCny) {
+    return { allowed: false, reason: `DeepSeek 今日金额额度已用完（¥${quota.dailyCostLimitCny}/日）` };
+  }
+
+  if (usage.weeklyCostCny >= quota.weeklyCostLimitCny) {
+    return { allowed: false, reason: `DeepSeek 本周金额额度已用完（¥${quota.weeklyCostLimitCny}/周）` };
+  }
+
+  return {
+    allowed: true,
+    dailyRemaining: quota.dailyCostLimitCny - usage.dailyCostCny,
+    weeklyRemaining: quota.weeklyCostLimitCny - usage.weeklyCostCny,
   };
 }
 
@@ -291,9 +395,13 @@ async function addTokens(studentId, providerOrTokens, maybeTokens, maybeCostMicr
 module.exports = {
   addTokenUsage,
   addTokens,
+  checkDeepSeekCostQuota,
   checkQuota,
   checkTokenQuota,
+  getDeepSeekCostQuota,
+  getEffectiveTokenQuota,
   getOrCreateCounter,
+  getProviderTokenQuota,
   getTokenUsage,
   getUsageSummary,
 };
