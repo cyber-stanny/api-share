@@ -182,13 +182,16 @@ router.get('/students', adminAuth, async (req, res) => {
       total = filteredStudents.length;
       students = filteredStudents.slice((page - 1) * pageSize, page * pageSize);
     } else {
-      const result = await db.collection('users')
-        .orderBy('createdAt', 'desc')
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
-        .get();
+      const [result, countResult] = await Promise.all([
+        db.collection('users')
+          .orderBy('createdAt', 'desc')
+          .skip((page - 1) * pageSize)
+          .limit(pageSize)
+          .get(),
+        db.collection('users').count(),
+      ]);
       students = result.data;
-      total = result.total;
+      total = countResult.total;
     }
 
     // 批量查 token 用量，读取前先按北京时间校准日/周计数。
