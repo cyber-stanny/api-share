@@ -34,6 +34,15 @@ const TOKEN_PROVIDERS = {
     dailyCost: 'deepseekDailyCostMicroCny',
     weeklyCost: 'deepseekWeeklyCostMicroCny',
   },
+  glm: {
+    label: 'GLM',
+    daily: 'glmDailyTokens',
+    weekly: 'glmWeeklyTokens',
+    lastDay: 'lastGlmDayReset',
+    lastWeek: 'lastGlmWeekReset',
+    dailyCost: 'glmDailyCostMicroCny',
+    weeklyCost: 'glmWeeklyCostMicroCny',
+  },
 };
 
 function getDayStart() {
@@ -148,6 +157,10 @@ function createInitialCounter(studentId, dayStart, weekStart) {
     deepseekWeeklyTokens: 0,
     deepseekDailyCostMicroCny: 0,
     deepseekWeeklyCostMicroCny: 0,
+    glmDailyTokens: 0,
+    glmWeeklyTokens: 0,
+    glmDailyCostMicroCny: 0,
+    glmWeeklyCostMicroCny: 0,
     lastDayReset: dayStart,
     lastWeekReset: weekStart,
     lastMimoDayReset: dayStart,
@@ -158,6 +171,8 @@ function createInitialCounter(studentId, dayStart, weekStart) {
     lastDeepseekWeekReset: weekStart,
     lastDeepSeekDayReset: dayStart,
     lastDeepSeekWeekReset: weekStart,
+    lastGlmDayReset: dayStart,
+    lastGlmWeekReset: weekStart,
   };
 }
 
@@ -167,6 +182,7 @@ function normalizeCounter(counter, dayStart, weekStart) {
   normalizeTokenProvider(counter, update, 'mimo', dayStart, weekStart);
   normalizeTokenProvider(counter, update, 'aliyun', dayStart, weekStart);
   normalizeTokenProvider(counter, update, 'deepseek', dayStart, weekStart);
+  normalizeTokenProvider(counter, update, 'glm', dayStart, weekStart);
 
   return update;
 }
@@ -230,6 +246,12 @@ function getEffectiveTokenQuota(quota = {}) {
   const deepseekWeeklyCostLimitCny = Number.isFinite(Number(effectiveQuota.deepseekWeeklyCostLimitCny))
     ? Number(effectiveQuota.deepseekWeeklyCostLimitCny)
     : config.defaultDeepSeekQuota.weeklyCostLimitCny;
+  const glmDailyCostLimitCny = Number.isFinite(Number(effectiveQuota.glmDailyCostLimitCny))
+    ? Number(effectiveQuota.glmDailyCostLimitCny)
+    : config.defaultGlmQuota.dailyCostLimitCny;
+  const glmWeeklyCostLimitCny = Number.isFinite(Number(effectiveQuota.glmWeeklyCostLimitCny))
+    ? Number(effectiveQuota.glmWeeklyCostLimitCny)
+    : config.defaultGlmQuota.weeklyCostLimitCny;
 
   return {
     dailyTokenLimit,
@@ -240,6 +262,8 @@ function getEffectiveTokenQuota(quota = {}) {
     aliyunWeeklyTokenLimit,
     deepseekDailyCostLimitCny,
     deepseekWeeklyCostLimitCny,
+    glmDailyCostLimitCny,
+    glmWeeklyCostLimitCny,
   };
 }
 
@@ -278,6 +302,7 @@ function getUsageSummary(counter = {}) {
   const mimo = getTokenUsage(counter, 'mimo');
   const aliyun = getTokenUsage(counter, 'aliyun');
   const deepseek = getTokenUsage(counter, 'deepseek');
+  const glm = getTokenUsage(counter, 'glm');
 
   return {
     dailyTokensUsed: mimo.dailyTokens,
@@ -292,6 +317,12 @@ function getUsageSummary(counter = {}) {
     deepseekWeeklyCostMicroCny: deepseek.weeklyCostMicroCny,
     deepseekDailyCostCny: deepseek.dailyCostCny,
     deepseekWeeklyCostCny: deepseek.weeklyCostCny,
+    glmDailyTokensUsed: glm.dailyTokens,
+    glmWeeklyTokensUsed: glm.weeklyTokens,
+    glmDailyCostMicroCny: glm.dailyCostMicroCny,
+    glmWeeklyCostMicroCny: glm.weeklyCostMicroCny,
+    glmDailyCostCny: glm.dailyCostCny,
+    glmWeeklyCostCny: glm.weeklyCostCny,
   };
 }
 
@@ -356,6 +387,39 @@ async function checkDeepSeekCostQuota(studentId) {
   };
 }
 
+function getGlmCostQuota(quota = {}) {
+  const effective = getEffectiveTokenQuota(quota);
+  return {
+    dailyCostLimitCny: effective.glmDailyCostLimitCny,
+    weeklyCostLimitCny: effective.glmWeeklyCostLimitCny,
+  };
+}
+
+async function checkGlmCostQuota(studentId) {
+  const { data } = await db.collection('users').where({ studentId }).limit(1).get();
+  if (!data || data.length === 0) {
+    return { allowed: false, reason: '用户不存在' };
+  }
+
+  const user = data[0];
+  const quota = getGlmCostQuota(user.quota || config.defaultQuota);
+  const counter = await getOrCreateCounter(studentId);
+  const usage = getTokenUsage(counter, 'glm');
+
+  if (usage.dailyCostCny >= quota.dailyCostLimitCny) {
+    return { allowed: false, reason: `GLM 今日金额额度已用完（¥${quota.dailyCostLimitCny}/日）` };
+  }
+  if (usage.weeklyCostCny >= quota.weeklyCostLimitCny) {
+    return { allowed: false, reason: `GLM 本周金额额度已用完（¥${quota.weeklyCostLimitCny}/周）` };
+  }
+
+  return {
+    allowed: true,
+    dailyRemaining: quota.dailyCostLimitCny - usage.dailyCostCny,
+    weeklyRemaining: quota.weeklyCostLimitCny - usage.weeklyCostCny,
+  };
+}
+
 async function addTokenUsage(studentId, providerKey = 'mimo', totalTokens = 0, costMicroCny = 0) {
   const tokens = Math.ceil(toCounterNumber(totalTokens));
   const cost = Math.round(toCounterNumber(costMicroCny));
@@ -396,9 +460,11 @@ module.exports = {
   addTokenUsage,
   addTokens,
   checkDeepSeekCostQuota,
+  checkGlmCostQuota,
   checkQuota,
   checkTokenQuota,
   getDeepSeekCostQuota,
+  getGlmCostQuota,
   getEffectiveTokenQuota,
   getOrCreateCounter,
   getProviderTokenQuota,

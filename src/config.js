@@ -33,10 +33,16 @@ const config = {
       rpm: parseInt(process.env.UPSTREAM_ALIYUN_RPM || process.env.UPSTREAM_MIMO_RPM || '80', 10),
     },
     deepseek: {
-      maxConcurrent: parseInt(process.env.UPSTREAM_DEEPSEEK_MAX_CONCURRENT || process.env.UPSTREAM_MIMO_MAX_CONCURRENT || '8', 10),
-      maxQueue: parseInt(process.env.UPSTREAM_DEEPSEEK_MAX_QUEUE || process.env.UPSTREAM_MIMO_MAX_QUEUE || '10', 10),
-      queueTimeoutMs: parseInt(process.env.UPSTREAM_DEEPSEEK_QUEUE_TIMEOUT_MS || process.env.UPSTREAM_MIMO_QUEUE_TIMEOUT_MS || '30000', 10),
-      rpm: parseInt(process.env.UPSTREAM_DEEPSEEK_RPM || process.env.UPSTREAM_MIMO_RPM || '80', 10),
+      maxConcurrent: parseInt(process.env.UPSTREAM_DEEPSEEK_MAX_CONCURRENT || '100', 10),
+      maxQueue: parseInt(process.env.UPSTREAM_DEEPSEEK_MAX_QUEUE || '100', 10),
+      queueTimeoutMs: parseInt(process.env.UPSTREAM_DEEPSEEK_QUEUE_TIMEOUT_MS || '30000', 10),
+      rpm: parseInt(process.env.UPSTREAM_DEEPSEEK_RPM || '1000', 10),
+    },
+    glm: {
+      maxConcurrent: parseInt(process.env.UPSTREAM_GLM_MAX_CONCURRENT || '20', 10),
+      maxQueue: parseInt(process.env.UPSTREAM_GLM_MAX_QUEUE || '50', 10),
+      queueTimeoutMs: parseInt(process.env.UPSTREAM_GLM_QUEUE_TIMEOUT_MS || '30000', 10),
+      rpm: parseInt(process.env.UPSTREAM_GLM_RPM || '300', 10),
     },
   },
 
@@ -54,12 +60,18 @@ const config = {
     aliyunWeeklyTokenLimit: 8000000,
     deepseekDailyCostLimitCny: parseFloat(process.env.DEEPSEEK_DAILY_COST_LIMIT_CNY || '5'),
     deepseekWeeklyCostLimitCny: parseFloat(process.env.DEEPSEEK_WEEKLY_COST_LIMIT_CNY || '20'),
+    glmDailyCostLimitCny: parseFloat(process.env.GLM_DAILY_COST_LIMIT_CNY || '5'),
+    glmWeeklyCostLimitCny: parseFloat(process.env.GLM_WEEKLY_COST_LIMIT_CNY || '20'),
   },
 
   // DeepSeek 默认额度（按人民币金额计算）
   defaultDeepSeekQuota: {
     dailyCostLimitCny: parseFloat(process.env.DEEPSEEK_DAILY_COST_LIMIT_CNY || '5'),
     weeklyCostLimitCny: parseFloat(process.env.DEEPSEEK_WEEKLY_COST_LIMIT_CNY || '20'),
+  },
+  defaultGlmQuota: {
+    dailyCostLimitCny: parseFloat(process.env.GLM_DAILY_COST_LIMIT_CNY || '5'),
+    weeklyCostLimitCny: parseFloat(process.env.GLM_WEEKLY_COST_LIMIT_CNY || '20'),
   },
 };
 

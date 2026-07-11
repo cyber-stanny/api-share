@@ -68,6 +68,7 @@ function validateQuotaAgainstUsage(quota, counter) {
   const mimoUsage = getTokenUsage(counter, 'mimo');
   const aliyunUsage = getTokenUsage(counter, 'aliyun');
   const deepseekUsage = getTokenUsage(counter, 'deepseek');
+  const glmUsage = getTokenUsage(counter, 'glm');
   const checks = [
     ['mimoDailyTokenLimit', quota.mimoDailyTokenLimit, mimoUsage.dailyTokens, 'MiMo 今日 token 额度不能低于已用量'],
     ['mimoWeeklyTokenLimit', quota.mimoWeeklyTokenLimit, mimoUsage.weeklyTokens, 'MiMo 本周 token 额度不能低于已用量'],
@@ -75,6 +76,8 @@ function validateQuotaAgainstUsage(quota, counter) {
     ['aliyunWeeklyTokenLimit', quota.aliyunWeeklyTokenLimit, aliyunUsage.weeklyTokens, 'Aliyun 本周 token 额度不能低于已用量'],
     ['deepseekDailyCostLimitCny', quota.deepseekDailyCostLimitCny, deepseekUsage.dailyCostCny, 'DeepSeek 今日金额额度不能低于已用量'],
     ['deepseekWeeklyCostLimitCny', quota.deepseekWeeklyCostLimitCny, deepseekUsage.weeklyCostCny, 'DeepSeek 本周金额额度不能低于已用量'],
+    ['glmDailyCostLimitCny', quota.glmDailyCostLimitCny, glmUsage.dailyCostCny, 'GLM 今日金额额度不能低于已用量'],
+    ['glmWeeklyCostLimitCny', quota.glmWeeklyCostLimitCny, glmUsage.weeklyCostCny, 'GLM 本周金额额度不能低于已用量'],
   ];
 
   for (const [, limit, used, message] of checks) {
@@ -96,8 +99,8 @@ function validateUsageFilters({ studentId, model, provider, groupBy }) {
   if (model && String(model).length > 128) {
     return 'model 不能超过 128 个字符';
   }
-  if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
-    return 'provider 只支持 mimo / aliyun / deepseek；minimax 仅保留历史查询';
+  if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek', 'glm'].includes(provider)) {
+    return 'provider 只支持 mimo / aliyun / deepseek / glm；minimax 仅保留历史查询';
   }
   if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
     return 'groupBy 只支持 day / week / month / all';
@@ -194,6 +197,8 @@ router.put('/students/:id/quota', adminAuth, async (req, res) => {
       aliyunWeeklyTokenLimit,
       deepseekDailyCostLimitCny,
       deepseekWeeklyCostLimitCny,
+      glmDailyCostLimitCny,
+      glmWeeklyCostLimitCny,
     } = req.body;
     const update = {};
 
@@ -222,6 +227,8 @@ router.put('/students/:id/quota', adminAuth, async (req, res) => {
       aliyunWeeklyTokenLimit: parseTokenField('aliyunWeeklyTokenLimit', aliyunWeeklyTokenLimit),
       deepseekDailyCostLimitCny: parseCostField('deepseekDailyCostLimitCny', deepseekDailyCostLimitCny),
       deepseekWeeklyCostLimitCny: parseCostField('deepseekWeeklyCostLimitCny', deepseekWeeklyCostLimitCny),
+      glmDailyCostLimitCny: parseCostField('glmDailyCostLimitCny', glmDailyCostLimitCny),
+      glmWeeklyCostLimitCny: parseCostField('glmWeeklyCostLimitCny', glmWeeklyCostLimitCny),
     };
 
     for (const parsed of Object.values(parsedFields)) {
@@ -262,6 +269,10 @@ router.put('/students/:id/quota', adminAuth, async (req, res) => {
       dailyCostLimitCny: nextQuota.deepseekDailyCostLimitCny,
       weeklyCostLimitCny: nextQuota.deepseekWeeklyCostLimitCny,
       costFieldPrefix: 'deepseek',
+    }) || validateWeeklyLimits({
+      dailyCostLimitCny: nextQuota.glmDailyCostLimitCny,
+      weeklyCostLimitCny: nextQuota.glmWeeklyCostLimitCny,
+      costFieldPrefix: 'glm',
     });
 
     if (validationError) {
@@ -321,6 +332,8 @@ router.post('/students', adminAuth, async (req, res) => {
       aliyunWeeklyTokenLimit,
       deepseekDailyCostLimitCny,
       deepseekWeeklyCostLimitCny,
+      glmDailyCostLimitCny,
+      glmWeeklyCostLimitCny,
     } = req.body;
 
     if (!isValidShortText(studentId, 64) || !isValidShortText(password, 128)) {
@@ -373,6 +386,18 @@ router.post('/students', adminAuth, async (req, res) => {
       config.defaultDeepSeekQuota.weeklyCostLimitCny
     );
     if (deepseekWeeklyParsed.error) return error(res, deepseekWeeklyParsed.error);
+    const glmDailyParsed = parseOptionalCost(
+      'glmDailyCostLimitCny',
+      glmDailyCostLimitCny,
+      config.defaultGlmQuota.dailyCostLimitCny
+    );
+    if (glmDailyParsed.error) return error(res, glmDailyParsed.error);
+    const glmWeeklyParsed = parseOptionalCost(
+      'glmWeeklyCostLimitCny',
+      glmWeeklyCostLimitCny,
+      config.defaultGlmQuota.weeklyCostLimitCny
+    );
+    if (glmWeeklyParsed.error) return error(res, glmWeeklyParsed.error);
 
     const validationError = validateWeeklyLimits({
       dailyTokenLimit: mimoDailyParsed.value,
@@ -386,6 +411,10 @@ router.post('/students', adminAuth, async (req, res) => {
       dailyCostLimitCny: deepseekDailyParsed.value,
       weeklyCostLimitCny: deepseekWeeklyParsed.value,
       costFieldPrefix: 'deepseek',
+    }) || validateWeeklyLimits({
+      dailyCostLimitCny: glmDailyParsed.value,
+      weeklyCostLimitCny: glmWeeklyParsed.value,
+      costFieldPrefix: 'glm',
     });
 
     if (validationError) return error(res, validationError);
@@ -420,6 +449,8 @@ router.post('/students', adminAuth, async (req, res) => {
         aliyunWeeklyTokenLimit: aliyunWeeklyParsed.value,
         deepseekDailyCostLimitCny: deepseekDailyParsed.value,
         deepseekWeeklyCostLimitCny: deepseekWeeklyParsed.value,
+        glmDailyCostLimitCny: glmDailyParsed.value,
+        glmWeeklyCostLimitCny: glmWeeklyParsed.value,
       },
       createdAt: new Date(),
     });
@@ -453,7 +484,7 @@ router.get('/whitelist', adminAuth, async (req, res) => {
 // 添加白名单
 router.post('/whitelist', adminAuth, async (req, res) => {
   try {
-    const { items } = req.body; // [{ studentId, name? }]
+    const { items, tag: batchTag } = req.body; // [{ studentId, name?, tag? }]
 
     if (!items || !Array.isArray(items) || items.length === 0 || items.length > 200) {
       return error(res, '请提供学号列表，格式: items: [{ studentId, name? }]');
@@ -462,8 +493,9 @@ router.post('/whitelist', adminAuth, async (req, res) => {
     const normalizedItems = items.map(item => {
       const sid = String(item.studentId || '').trim();
       const name = item.name !== undefined ? String(item.name).trim() : '';
-      return { studentId: sid, name };
-    }).filter(item => item.studentId.length > 0 && item.studentId.length <= 64);
+      const tag = String(item.tag !== undefined ? item.tag : batchTag || '').trim();
+      return { studentId: sid, name, tag };
+    }).filter(item => item.studentId.length > 0 && item.studentId.length <= 64 && item.tag.length <= 64);
 
     if (normalizedItems.length === 0) {
       return error(res, '学号格式不合法');
@@ -472,7 +504,7 @@ router.post('/whitelist', adminAuth, async (req, res) => {
     const added = [];
     const skipped = [];
 
-    for (const { studentId, name } of normalizedItems) {
+    for (const { studentId, name, tag } of normalizedItems) {
       const { data: existing } = await db.collection('whitelist')
         .where({ studentId })
         .limit(1)
@@ -483,6 +515,7 @@ router.post('/whitelist', adminAuth, async (req, res) => {
       } else {
         const doc = { studentId, addedAt: new Date() };
         if (name) doc.name = name;
+        if (tag) doc.tag = tag;
         await db.collection('whitelist').add(doc);
         added.push(studentId);
       }

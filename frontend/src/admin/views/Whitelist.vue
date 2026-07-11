@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { api, escapeHtml } from '@shared/api/client';
 import { fmtDate } from '@shared/format';
 import type { WhitelistItem } from '@shared/api/types';
@@ -7,9 +7,16 @@ import type { WhitelistItem } from '@shared/api/types';
 const whitelist = ref<WhitelistItem[]>([]);
 const showAddDialog = ref(false);
 const newIds = ref('');
+const newTag = ref('');
+const selectedTag = ref('');
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
+
+const tags = computed(() => Array.from(new Set(whitelist.value.map(item => item.tag).filter(Boolean) as string[])).sort());
+const filteredWhitelist = computed(() => selectedTag.value
+  ? whitelist.value.filter(item => item.tag === selectedTag.value)
+  : whitelist.value);
 
 async function loadWhitelist() {
   const data = await api<{ items: WhitelistItem[]; total: number }>(`/api/admin/whitelist?page=${page.value}&pageSize=${pageSize.value}`);
@@ -34,10 +41,11 @@ async function addWhitelist() {
   });
   await api('/api/admin/whitelist', {
     method: 'POST',
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, tag: newTag.value.trim() }),
   });
   showAddDialog.value = false;
   newIds.value = '';
+  newTag.value = '';
   loadWhitelist();
 }
 
@@ -54,7 +62,13 @@ onMounted(loadWhitelist);
   <div class="whitelist-page">
     <div class="page-header">
       <h2>学号白名单</h2>
-      <button class="btn primary btn-sm" @click="showAddDialog = true">添加白名单</button>
+      <div class="page-actions">
+        <select v-model="selectedTag" class="tag-filter">
+          <option value="">全部标签</option>
+          <option v-for="tag in tags" :key="tag" :value="tag">{{ tag }}</option>
+        </select>
+        <button class="btn primary btn-sm" @click="showAddDialog = true">添加白名单</button>
+      </div>
     </div>
 
     <div class="card">
@@ -64,14 +78,16 @@ onMounted(loadWhitelist);
           <tr>
             <th>学号</th>
             <th>姓名</th>
+            <th>标签</th>
             <th>添加时间</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="w in whitelist" :key="w._id">
+          <tr v-for="w in filteredWhitelist" :key="w._id">
             <td>{{ escapeHtml(w.studentId) }}</td>
             <td>{{ escapeHtml(w.name) || '-' }}</td>
+            <td><span v-if="w.tag" class="tag-badge">{{ escapeHtml(w.tag) }}</span><span v-else>-</span></td>
             <td>{{ fmtDate(w.addedAt) }}</td>
             <td>
               <button class="btn danger btn-sm" @click="deleteItem(w._id)">删除</button>
@@ -91,6 +107,8 @@ onMounted(loadWhitelist);
       <div v-if="showAddDialog" class="modal-overlay" @click.self="showAddDialog = false">
         <div class="modal">
           <h3>添加白名单</h3>
+          <label class="field-label" for="whitelist-tag">标签</label>
+          <input id="whitelist-tag" v-model="newTag" class="tag-input" placeholder="例如：山东外国语职业技术大学 / 2024级1班" maxlength="64" />
           <p class="hint">每行一个，格式：<code>学号 姓名</code>（姓名选填，用空格分隔）</p>
           <textarea
             v-model="newIds"
@@ -125,6 +143,11 @@ onMounted(loadWhitelist);
   margin-bottom: 20px;
 }
 .page-header h2 { margin: 0; font: 700 20px var(--serif); }
+.page-actions { display: flex; align-items: center; gap: 8px; }
+.tag-filter, .tag-input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.tag-input { width: 100%; box-sizing: border-box; margin-bottom: 12px; }
+.field-label { display: block; margin: 14px 0 6px; font-size: 13px; font-weight: 600; }
+.tag-badge { display: inline-block; padding: 3px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); font-size: 12px; white-space: nowrap; }
 .card {
   background: var(--surface);
   border-radius: 8px;

@@ -52,10 +52,6 @@ async function handleFilter() {
   }
 }
 
-function mimiPct(current: number, limit: number) {
-  return pct(current, limit);
-}
-
 function setGroupBy(nextGroupBy: typeof groupBy.value) {
   groupBy.value = nextGroupBy;
   handleFilter();
@@ -71,59 +67,6 @@ onMounted(() => {
   <div class="usage-page">
     <!-- Provider Summary Cards -->
     <div class="provider-cards" v-if="dashboard.profile">
-      <!-- MiMo Card -->
-      <div class="provider-card">
-        <div class="provider-header">
-          <div class="provider-title">
-            <span class="dot" style="background:#3DB88B"></span>
-            <span>MiMo</span>
-          </div>
-          <a href="#" class="detail-link" @click.prevent="showProviderToday('mimo')">查看详情 →</a>
-        </div>
-        <div class="metric-group">
-          <div class="metric">
-            <div class="metric-label">今日</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.dailyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.dailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.mimoDailyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: mimiPct(dashboard.profile.dailyTokensUsed, dashboard.profile.quota?.mimoDailyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">本周</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.weeklyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.weeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.mimoWeeklyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: mimiPct(dashboard.profile.weeklyTokensUsed, dashboard.profile.quota?.mimoWeeklyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
-          </div>
-        </div>
-        <div class="provider-footer">mimo-v2.5-pro · 2x token calculation</div>
-      </div>
-
-      <!-- Aliyun Card -->
-      <div class="provider-card">
-        <div class="provider-header">
-          <div class="provider-title">
-            <span class="dot" style="background:#4D6BFE"></span>
-            <span>Aliyun Token Plan</span>
-          </div>
-          <a href="#" class="detail-link" @click.prevent="showProviderToday('aliyun')">查看详情 →</a>
-        </div>
-        <div class="metric-group">
-          <div class="metric">
-            <div class="metric-label">今日</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.aliyunDailyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunDailyTokensUsed, dashboard.profile.quota?.aliyunDailyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">本周</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.aliyunWeeklyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunWeeklyTokensUsed, dashboard.profile.quota?.aliyunWeeklyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
-          </div>
-        </div>
-        <div class="provider-footer">GLM · Kimi · Qwen</div>
-      </div>
-
-      <!-- DeepSeek Card -->
       <div class="provider-card">
         <div class="provider-header">
           <div class="provider-title">
@@ -148,6 +91,30 @@ onMounted(() => {
         </div>
         <div class="provider-footer">deepseek-v4-flash · deepseek-v4-pro</div>
       </div>
+      <div class="provider-card">
+        <div class="provider-header">
+          <div class="provider-title">
+            <span class="dot" style="background:#2563EB"></span>
+            <span>智谱 GLM Official API</span>
+          </div>
+          <a href="#" class="detail-link" @click.prevent="showProviderToday('glm')">查看详情 →</a>
+        </div>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-label">今日</div>
+            <div class="metric-value">¥{{ fmtCny(dashboard.profile.glmDailyCostCny) }}</div>
+            <div class="metric-ratio">¥{{ fmtCny(dashboard.profile.glmDailyCostCny) }} / ¥{{ fmtCny(dashboard.profile.quota?.glmDailyCostLimitCny || 0) }}</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.glmDailyCostCny, dashboard.profile.quota?.glmDailyCostLimitCny || 0) + '%', background: '#2563EB' }"></span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">本周</div>
+            <div class="metric-value">¥{{ fmtCny(dashboard.profile.glmWeeklyCostCny) }}</div>
+            <div class="metric-ratio">¥{{ fmtCny(dashboard.profile.glmWeeklyCostCny) }} / ¥{{ fmtCny(dashboard.profile.quota?.glmWeeklyCostLimitCny || 0) }}</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.glmWeeklyCostCny, dashboard.profile.quota?.glmWeeklyCostLimitCny || 0) + '%', background: '#2563EB' }"></span></div>
+          </div>
+        </div>
+        <div class="provider-footer">glm-5.2</div>
+      </div>
     </div>
 
     <!-- Usage Stats -->
@@ -171,6 +138,7 @@ onMounted(() => {
           <option value="aliyun">Aliyun Token Plan</option>
           <option value="minimax">MiniMax（历史）</option>
           <option value="deepseek">DeepSeek Official API</option>
+          <option value="glm">智谱 GLM Official API</option>
         </select>
         <input
           v-model="model"

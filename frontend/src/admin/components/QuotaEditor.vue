@@ -66,6 +66,17 @@ function handleSave() {
             <input v-model.number="form.deepseekWeeklyCostLimitCny" class="input" type="number" min="0" step="0.01" />
           </div>
         </div>
+        <div class="section-label">智谱 GLM 金额限额</div>
+        <div class="form-row">
+          <div class="field">
+            <label>每日金额上限（元）</label>
+            <input v-model.number="form.glmDailyCostLimitCny" class="input" type="number" min="0" step="0.01" />
+          </div>
+          <div class="field">
+            <label>每周金额上限（元）</label>
+            <input v-model.number="form.glmWeeklyCostLimitCny" class="input" type="number" min="0" step="0.01" />
+          </div>
+        </div>
         <div class="modal-actions">
           <button class="btn" @click="emit('close')">取消</button>
           <button class="btn primary" @click="handleSave">保存</button>

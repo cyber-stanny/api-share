@@ -20,6 +20,10 @@ const DEEPSEEK_MODELS = [
   'deepseek-v4-pro',
 ];
 
+const GLM_MODELS = [
+  'glm-5.2',
+];
+
 const DEEPSEEK_PRICING_PER_MILLION_CNY = {
   'deepseek-v4-flash': {
     inputCacheHit: 0.02,
@@ -33,16 +37,17 @@ const DEEPSEEK_PRICING_PER_MILLION_CNY = {
   },
 };
 
+const GLM_PRICING_PER_MILLION_CNY = {
+  'glm-5.2': {
+    inputCacheHit: 2,
+    inputCacheMiss: 8,
+    output: 28,
+  },
+};
+
 const MODEL_METADATA = [
-  { id: 'mimo-v2.5-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2.5', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2.5-tts-voiceclone', provider: 'MiMo Token Plan', protocols: ['openai'] },
-  { id: 'mimo-v2.5-tts-voicedesign', provider: 'MiMo Token Plan', protocols: ['openai'] },
-  { id: 'mimo-v2.5-tts', provider: 'MiMo Token Plan', protocols: ['openai'] },
-  { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  ...ALIYUN_MODELS.map(id => ({ id, provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] })),
   ...DEEPSEEK_MODELS.map(id => ({ id, provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] })),
+  ...GLM_MODELS.map(id => ({ id, provider: '智谱 GLM Official API', protocols: ['openai'] })),
 ];
 
 const NON_TEXT_MODELS = new Set([
@@ -63,9 +68,7 @@ function isTextModelSupported(id) {
 }
 
 function isUpstreamSupported(upstream) {
-  return upstream?.provider === 'MiMo Token Plan'
-    || upstream?.provider === 'Aliyun Token Plan'
-    || upstream?.provider === 'DeepSeek Official API';
+  return upstream?.provider === 'DeepSeek Official API' || upstream?.provider === '智谱 GLM Official API';
 }
 
 const MIMO_UPSTREAMS = [
@@ -76,7 +79,7 @@ const MIMO_UPSTREAMS = [
     apiKeyEnv: 'MIMO_API_KEY',
     models: MIMO_MODELS,
     protocol: 'openai',
-    enabled: true,
+    enabled: false,
     priority: 10,
   },
   {
@@ -86,7 +89,7 @@ const MIMO_UPSTREAMS = [
     apiKeyEnv: 'MIMO_API_KEY',
     models: MIMO_MODELS,
     protocol: 'anthropic',
-    enabled: true,
+    enabled: false,
     priority: 10,
   },
 ];
@@ -100,7 +103,7 @@ const ALIYUN_UPSTREAMS = [
     apiKeyEnv: 'ALIYUN_API_KEY',
     models: ALIYUN_MODELS,
     protocol: 'openai',
-    enabled: true,
+    enabled: false,
     priority: 20,
   },
   {
@@ -110,7 +113,7 @@ const ALIYUN_UPSTREAMS = [
     apiKeyEnv: 'ALIYUN_API_KEY',
     models: ALIYUN_MODELS,
     protocol: 'anthropic',
-    enabled: true,
+    enabled: false,
     priority: 20,
   },
 ];
@@ -138,7 +141,21 @@ const DEEPSEEK_UPSTREAMS = [
   },
 ];
 
-const UPSTREAM_PRESETS = [...MIMO_UPSTREAMS, ...ALIYUN_UPSTREAMS, ...DEEPSEEK_UPSTREAMS];
+const GLM_UPSTREAMS = [
+  {
+    name: '智谱 GLM Official (OpenAI)',
+    provider: '智谱 GLM Official API',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    apiPath: '/chat/completions',
+    apiKeyEnv: 'GLM_API_KEY',
+    models: GLM_MODELS,
+    protocol: 'openai',
+    enabled: true,
+    priority: 30,
+  },
+];
+
+const UPSTREAM_PRESETS = [...MIMO_UPSTREAMS, ...ALIYUN_UPSTREAMS, ...DEEPSEEK_UPSTREAMS, ...GLM_UPSTREAMS];
 
 const MODEL_ORDER = MODEL_METADATA.map(model => model.id);
 
@@ -158,18 +175,26 @@ function getDeepSeekPricing(modelId) {
   return DEEPSEEK_PRICING_PER_MILLION_CNY[modelId] || null;
 }
 
+function getGlmPricing(modelId) {
+  return GLM_PRICING_PER_MILLION_CNY[modelId] || null;
+}
+
 module.exports = {
   MIMO_MODELS,
   ALIYUN_MODELS,
   DEEPSEEK_MODELS,
+  GLM_MODELS,
   DEEPSEEK_PRICING_PER_MILLION_CNY,
+  GLM_PRICING_PER_MILLION_CNY,
   MODEL_METADATA,
   MODEL_ORDER,
   MIMO_UPSTREAMS,
   ALIYUN_UPSTREAMS,
   DEEPSEEK_UPSTREAMS,
+  GLM_UPSTREAMS,
   UPSTREAM_PRESETS,
   getDeepSeekPricing,
+  getGlmPricing,
   getModelMetadata,
   getMimoTokenMultiplier,
   isTextModelSupported,

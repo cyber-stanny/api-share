@@ -12,6 +12,8 @@ export interface User {
     aliyunWeeklyTokenLimit: number;
     deepseekDailyCostLimitCny: number;
     deepseekWeeklyCostLimitCny: number;
+    glmDailyCostLimitCny: number;
+    glmWeeklyCostLimitCny: number;
   };
   dailyTokensUsed: number;
   weeklyTokensUsed: number;
@@ -23,6 +25,12 @@ export interface User {
   deepseekWeeklyCostMicroCny: number;
   deepseekDailyCostCny: number;
   deepseekWeeklyCostCny: number;
+  glmDailyTokensUsed: number;
+  glmWeeklyTokensUsed: number;
+  glmDailyCostMicroCny: number;
+  glmWeeklyCostMicroCny: number;
+  glmDailyCostCny: number;
+  glmWeeklyCostCny: number;
   createdAt: string;
 }
 
@@ -86,11 +94,14 @@ export interface Quota {
   aliyunWeeklyTokenLimit: number;
   deepseekDailyCostLimitCny: number;
   deepseekWeeklyCostLimitCny: number;
+  glmDailyCostLimitCny: number;
+  glmWeeklyCostLimitCny: number;
 }
 
 export interface WhitelistItem {
   _id: string;
   studentId: string;
   name?: string;
+  tag?: string;
   addedAt: string;
 }

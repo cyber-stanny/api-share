@@ -27,6 +27,7 @@ async function main() {
     name: preset.name,
     provider: preset.provider,
     baseUrl: preset.baseUrl,
+    apiPath: preset.apiPath || null,
     apiKey: process.env[preset.apiKeyEnv] || `sk-xxx-${preset.apiKeyEnv.toLowerCase()}`,
     models: preset.models,
     protocol: preset.protocol,

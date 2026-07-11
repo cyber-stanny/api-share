@@ -25,15 +25,15 @@ cp .env.example .env
 CLOUDBASE_ENV_ID=你的 CloudBase 环境 ID
 TENCENT_SECRET_ID=腾讯云 SecretId
 TENCENT_SECRET_KEY=腾讯云 SecretKey
+TENCENTCLOUD_REGION=ap-shanghai
 JWT_SECRET=和 CloudBase 部署保持一致的随机密钥
 ADMIN_INIT_PASSWORD=管理员初始密码
 CORS_ORIGINS=https://你的域名
 PROXY_ENABLED=true
-MIMO_API_KEY=你的 MiMo Key
-ALIYUN_API_KEY=你的阿里云 Token Plan Key
+DEEPSEEK_API_KEY=你的 DeepSeek Key
 ```
 
-`TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 需要有访问对应 CloudBase 环境数据库的权限。
+`TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY` 需要有访问对应 CloudBase 环境数据库的权限。`TENCENTCLOUD_REGION` 需要设置为 CloudBase 环境所在地域，例如上海环境使用 `ap-shanghai`。
 
 ## 初始化数据
 
@@ -50,7 +50,7 @@ node scripts/seed-upstreams.js
 npm run sync:upstreams
 ```
 
-供应商迁移发布时，先预览再应用上游对账。预览不会修改数据库；应用会加入 Aliyun 上游并禁用 MiniMax 与旧 DeepSeek 上游：
+供应商迁移发布时，先预览再应用上游对账。预览不会修改数据库；应用会禁用 MiniMax、旧 DeepSeek Token Plan、MiMo 与 Aliyun 上游，只保留 DeepSeek Official API：
 
 ```bash
 npm run reconcile:upstreams

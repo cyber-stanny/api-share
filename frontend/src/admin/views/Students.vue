@@ -14,6 +14,8 @@ const DEFAULT_QUOTA: Quota = {
   aliyunWeeklyTokenLimit: 8000000,
   deepseekDailyCostLimitCny: 5,
   deepseekWeeklyCostLimitCny: 20,
+  glmDailyCostLimitCny: 5,
+  glmWeeklyCostLimitCny: 20,
 };
 
 const students = ref<User[]>([]);
@@ -158,6 +160,7 @@ onMounted(loadStudents);
             <th>学号 / 姓名</th>
             <th>Key</th>
             <th>MiMo Token</th>
+            <th>智谱 GLM Official API</th>
             <th>Aliyun Token Plan</th>
             <th>DeepSeek Official API</th>
             <th>操作</th>
@@ -165,7 +168,7 @@ onMounted(loadStudents);
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="empty">加载中…</td>
+            <td colspan="7" class="empty">加载中…</td>
           </tr>
           <tr v-else v-for="s in students" :key="s._id">
             <td>
@@ -187,6 +190,22 @@ onMounted(loadStudents);
                   <span :style="{ width: usagePct(s.weeklyTokensUsed, s.quota?.mimoWeeklyTokenLimit || 0) + '%', background: barColor(usagePct(s.weeklyTokensUsed, s.quota?.mimoWeeklyTokenLimit || 0)) }"></span>
                 </div>
                 <span class="usage-val">{{ fmtTokens(s.weeklyTokensUsed) }} / {{ fmtTokens(s.quota?.mimoWeeklyTokenLimit || 0) }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="usage-row">
+                <span class="usage-label">日</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.glmDailyCostCny || 0, s.quota?.glmDailyCostLimitCny || 0) + '%', background: barColor(usagePct(s.glmDailyCostCny || 0, s.quota?.glmDailyCostLimitCny || 0)) }"></span>
+                </div>
+                <span class="usage-val">¥{{ fmtCny(s.glmDailyCostCny || 0) }} / ¥{{ fmtCny(s.quota?.glmDailyCostLimitCny || 0) }}</span>
+              </div>
+              <div class="usage-row">
+                <span class="usage-label">周</span>
+                <div class="mini-bar">
+                  <span :style="{ width: usagePct(s.glmWeeklyCostCny || 0, s.quota?.glmWeeklyCostLimitCny || 0) + '%', background: barColor(usagePct(s.glmWeeklyCostCny || 0, s.quota?.glmWeeklyCostLimitCny || 0)) }"></span>
+                </div>
+                <span class="usage-val">¥{{ fmtCny(s.glmWeeklyCostCny || 0) }} / ¥{{ fmtCny(s.quota?.glmWeeklyCostLimitCny || 0) }}</span>
               </div>
             </td>
             <td>
@@ -227,7 +246,7 @@ onMounted(loadStudents);
             </td>
           </tr>
           <tr v-if="!loading && students.length === 0">
-            <td colspan="6" class="empty">暂无学生数据</td>
+            <td colspan="7" class="empty">暂无学生数据</td>
           </tr>
         </tbody>
       </table>

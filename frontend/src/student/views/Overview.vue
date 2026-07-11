@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useDashboardStore } from '../stores/dashboard';
-import { fmt, fmtCny, pct } from '@shared/format';
+import { fmtCny, pct } from '@shared/format';
 import { baseUrl } from '@shared/api/client';
 import KeyModal from '../components/KeyModal.vue';
 
@@ -11,14 +11,14 @@ const displayedKey = ref('');
 const loading = ref(false);
 const error = ref('');
 
-const recommended = { id: 'qwen3.7-max', provider: 'Aliyun Token Plan' };
+const recommended = { id: 'deepseek-v4-flash', provider: 'DeepSeek Official API' };
 
 async function loadData() {
   loading.value = true;
   error.value = '';
   try {
   await Promise.all([dashboard.loadProfile(), dashboard.loadModels()]);
-  const firstModel = dashboard.models.find(m => m.id === 'qwen3.7-max') || dashboard.models[0];
+  const firstModel = dashboard.models.find(m => m.id === 'deepseek-v4-flash') || dashboard.models[0];
   if (firstModel) {
     recommended.id = firstModel.id;
     recommended.provider = firstModel.provider;
@@ -33,7 +33,7 @@ async function loadData() {
 function renderQuickConfig(): string {
   const model = recommended.id;
   const key = '<你的 API Key>';
-  const recommendedNote = '# 推荐模型：qwen3.7-max';
+  const recommendedNote = '# 推荐模型：deepseek-v4-flash';
   return `${recommendedNote}
 # 当前示例来源：${recommended.provider}
 export ANTHROPIC_BASE_URL="${baseUrl()}"
@@ -66,57 +66,6 @@ onMounted(loadData);
     <div v-else-if="error" class="state-msg err">{{ error }}</div>
 
     <div class="provider-cards" v-if="dashboard.profile && !loading">
-      <!-- MiMo Card -->
-      <div class="provider-card">
-        <div class="provider-header">
-          <div class="provider-title">
-            <span class="dot" style="background:#3DB88B"></span>
-            <span>MiMo</span>
-          </div>
-        </div>
-        <div class="metric-group">
-          <div class="metric">
-            <div class="metric-label">今日</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.dailyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.dailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.mimoDailyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.dailyTokensUsed, dashboard.profile.quota?.mimoDailyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">本周</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.weeklyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.weeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.mimoWeeklyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.weeklyTokensUsed, dashboard.profile.quota?.mimoWeeklyTokenLimit || 0) + '%', background: '#3DB88B' }"></span></div>
-          </div>
-        </div>
-        <div class="provider-footer">mimo-v2.5-pro · 2x token calculation</div>
-      </div>
-
-      <!-- Aliyun Card -->
-      <div class="provider-card">
-        <div class="provider-header">
-          <div class="provider-title">
-            <span class="dot" style="background:#4D6BFE"></span>
-            <span>Aliyun Token Plan</span>
-          </div>
-        </div>
-        <div class="metric-group">
-          <div class="metric">
-            <div class="metric-label">今日</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunDailyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.aliyunDailyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunDailyTokensUsed, dashboard.profile.quota?.aliyunDailyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">本周</div>
-            <div class="metric-value">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }}</div>
-            <div class="metric-ratio">{{ fmt(dashboard.profile.aliyunWeeklyTokensUsed) }} / {{ fmt(dashboard.profile.quota?.aliyunWeeklyTokenLimit || 0) }} tokens</div>
-            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.aliyunWeeklyTokensUsed, dashboard.profile.quota?.aliyunWeeklyTokenLimit || 0) + '%', background: '#4D6BFE' }"></span></div>
-          </div>
-        </div>
-        <div class="provider-footer">GLM · Kimi · Qwen</div>
-      </div>
-
-      <!-- DeepSeek Card -->
       <div class="provider-card">
         <div class="provider-header">
           <div class="provider-title">
@@ -139,6 +88,29 @@ onMounted(loadData);
           </div>
         </div>
         <div class="provider-footer">deepseek-v4-flash · deepseek-v4-pro</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-header">
+          <div class="provider-title">
+            <span class="dot" style="background:#2563EB"></span>
+            <span>智谱 GLM Official API</span>
+          </div>
+        </div>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-label">今日</div>
+            <div class="metric-value">¥{{ fmtCny(dashboard.profile.glmDailyCostCny) }}</div>
+            <div class="metric-ratio">¥{{ fmtCny(dashboard.profile.glmDailyCostCny) }} / ¥{{ fmtCny(dashboard.profile.quota?.glmDailyCostLimitCny || 0) }}</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.glmDailyCostCny, dashboard.profile.quota?.glmDailyCostLimitCny || 0) + '%', background: '#2563EB' }"></span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">本周</div>
+            <div class="metric-value">¥{{ fmtCny(dashboard.profile.glmWeeklyCostCny) }}</div>
+            <div class="metric-ratio">¥{{ fmtCny(dashboard.profile.glmWeeklyCostCny) }} / ¥{{ fmtCny(dashboard.profile.quota?.glmWeeklyCostLimitCny || 0) }}</div>
+            <div class="progress-bar"><span :style="{ width: pct(dashboard.profile.glmWeeklyCostCny, dashboard.profile.quota?.glmWeeklyCostLimitCny || 0) + '%', background: '#2563EB' }"></span></div>
+          </div>
+        </div>
+        <div class="provider-footer">glm-5.2</div>
       </div>
     </div>
 

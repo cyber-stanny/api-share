@@ -7,15 +7,9 @@ import ModelGroupList from '../components/ModelGroupList.vue';
 const dashboard = useDashboardStore();
 
 const publicModelCards = [
-  { id: 'mimo-v2.5-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2.5', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'qwen3.7-max', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'glm-5.1', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'kimi-k2.6', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'deepseek-v4-flash', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
   { id: 'deepseek-v4-pro', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
+  { id: 'glm-5.2', provider: '智谱 GLM Official API', protocols: ['openai'] },
 ];
 
 const modelList = computed(() => dashboard.models.length ? dashboard.models : publicModelCards);

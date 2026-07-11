@@ -6,16 +6,16 @@ import { baseUrl, openaiBaseUrl } from '@shared/api/client';
 const dashboard = useDashboardStore();
 
 const recommended = computed(() => {
-  const m = dashboard.models.find(x => x.id === 'qwen3.7-max') || dashboard.models[0];
-  return m || { id: 'qwen3.7-max', provider: 'Aliyun Token Plan' };
+  const m = dashboard.models.find(x => x.id === 'deepseek-v4-flash') || dashboard.models[0];
+  return m || { id: 'deepseek-v4-flash', provider: 'DeepSeek Official API' };
 });
 
-const model = computed(() => recommended.value.id || 'qwen3.7-max');
-const provider = computed(() => recommended.value.provider || 'Aliyun Token Plan');
+const model = computed(() => recommended.value.id || 'deepseek-v4-flash');
+const provider = computed(() => recommended.value.provider || 'DeepSeek Official API');
 
 const claudeGuide = computed(() => {
   const key = '<你的 API Key>';
-  const recommendedNote = '# 推荐模型：qwen3.7-max';
+  const recommendedNote = '# 推荐模型：deepseek-v4-flash';
   return `${recommendedNote}
 # 当前示例来源：${provider.value}
 export ANTHROPIC_BASE_URL="${baseUrl()}"
@@ -25,7 +25,7 @@ export ANTHROPIC_MODEL="${model.value}"`;
 
 const openaiGuide = computed(() => {
   const key = '<你的 API Key>';
-  const recommendedNote = '# 推荐模型：qwen3.7-max';
+  const recommendedNote = '# 推荐模型：deepseek-v4-flash';
   return `${recommendedNote}
 curl ${openaiBaseUrl()}/chat/completions \\
   -H "Authorization: Bearer ${key}" \\

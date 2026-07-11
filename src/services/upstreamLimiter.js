@@ -23,6 +23,12 @@ function isDeepSeekUpstream(upstream) {
   return name.includes('deepseek') || baseUrl.includes('api.deepseek.com');
 }
 
+function isGlmUpstream(upstream) {
+  const name = String(upstream?.name || '').toLowerCase();
+  const baseUrl = String(upstream?.baseUrl || '').toLowerCase();
+  return name.includes('glm') || name.includes('智谱') || baseUrl.includes('bigmodel.cn');
+}
+
 function getLimitProfile(upstream) {
   if (isMimoUpstream(upstream)) {
     return { key: 'mimo', ...config.upstreamLimits.mimo };
@@ -32,6 +38,9 @@ function getLimitProfile(upstream) {
   }
   if (isDeepSeekUpstream(upstream)) {
     return { key: 'deepseek', ...config.upstreamLimits.deepseek };
+  }
+  if (isGlmUpstream(upstream)) {
+    return { key: 'glm', ...config.upstreamLimits.glm };
   }
   return null;
 }
@@ -246,5 +255,6 @@ module.exports = {
   isMimoUpstream,
   isAliyunUpstream,
   isDeepSeekUpstream,
+  isGlmUpstream,
   getUpstreamLimiterMetrics,
 };

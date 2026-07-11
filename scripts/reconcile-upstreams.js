@@ -9,7 +9,12 @@ const cloudbase = require('@cloudbase/node-sdk');
 const { UPSTREAM_PRESETS } = require('../src/services/modelCatalog');
 
 const APPLY = process.argv.includes('--apply');
-const RETIRED_PROVIDERS = new Set(['MiniMax Token Plan', 'DeepSeek Token Plan']);
+const RETIRED_PROVIDERS = new Set([
+  'MiniMax Token Plan',
+  'DeepSeek Token Plan',
+  'MiMo Token Plan',
+  'Aliyun Token Plan',
+]);
 
 function upstreamKey(name, protocol) {
   return `${name}::${protocol || 'openai'}`;
@@ -41,6 +46,7 @@ async function main() {
   const db = app.database();
   const { data: existing } = await db.collection('upstreams').get();
   const byKey = new Map(existing.map(item => [upstreamKey(item.name, item.protocol), item]));
+  const presetKeys = new Set(UPSTREAM_PRESETS.map(item => upstreamKey(item.name, item.protocol)));
   let changes = 0;
 
   for (const preset of UPSTREAM_PRESETS) {
@@ -84,7 +90,7 @@ async function main() {
     }
   }
 
-  for (const upstream of existing.filter(isRetired)) {
+  for (const upstream of existing.filter(item => isRetired(item) && !presetKeys.has(upstreamKey(item.name, item.protocol)))) {
     if (upstream.enabled === false) continue;
     changes++;
     console.log(`[${APPLY ? 'DISABLE' : 'WOULD DISABLE'}] ${upstream.name}`);

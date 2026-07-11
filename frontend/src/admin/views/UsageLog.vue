@@ -89,6 +89,7 @@ onMounted(loadUsage);
           <option value="aliyun">Aliyun Token Plan</option>
           <option value="minimax">MiniMax（历史）</option>
           <option value="deepseek">DeepSeek Official API</option>
+          <option value="glm">智谱 GLM Official API</option>
         </select>
         <input
           v-model="model"

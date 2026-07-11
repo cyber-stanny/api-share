@@ -56,8 +56,8 @@ function validateUsageFilters({ model, provider, groupBy }) {
   if (model && String(model).length > 128) {
     return 'model 不能超过 128 个字符';
   }
-  if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
-    return 'provider 只支持 mimo / aliyun / deepseek；minimax 仅保留历史查询';
+  if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek', 'glm'].includes(provider)) {
+    return 'provider 只支持 mimo / aliyun / deepseek / glm；minimax 仅保留历史查询';
   }
   if (groupBy && !['day', 'week', 'month', 'all'].includes(groupBy)) {
     return 'groupBy 只支持 day / week / month / all';
@@ -274,8 +274,8 @@ router.get('/usage', studentAuth, async (req, res) => {
     if (model && String(model).length > 128) {
       return error(res, 'model 不能超过 128 个字符');
     }
-    if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek'].includes(provider)) {
-      return error(res, 'provider 只支持 mimo / aliyun / deepseek；minimax 仅保留历史查询');
+    if (provider && !['mimo', 'aliyun', 'minimax', 'deepseek', 'glm'].includes(provider)) {
+      return error(res, 'provider 只支持 mimo / aliyun / deepseek / glm；minimax 仅保留历史查询');
     }
     const start = parseDateParam(startDate, 'startDate');
     if (start.error) return error(res, start.error);

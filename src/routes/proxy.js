@@ -1,7 +1,7 @@
 const express = require('express');
 const { apiKeyAuth } = require('../middleware/auth');
 const { findUpstream, getAvailableModelDetails } = require('../services/upstream');
-const { addTokenUsage, checkDeepSeekCostQuota, checkTokenQuota } = require('../services/quota');
+const { addTokenUsage, checkDeepSeekCostQuota, checkGlmCostQuota, checkTokenQuota } = require('../services/quota');
 const { checkRateLimit, acquireConcurrent, releaseConcurrent } = require('../services/rateLimit');
 const { acquireUpstreamSlot } = require('../services/upstreamLimiter');
 const { recordUsage } = require('../services/usage');
@@ -60,9 +60,17 @@ function normalizeAnthropicUsage(usage) {
   };
 }
 
+function getUpstreamRequestUrl(upstream, defaultPath) {
+  const path = upstream.apiPath || defaultPath;
+  return `${String(upstream.baseUrl || '').replace(/\/$/, '')}${path}`;
+}
+
 async function checkBillingQuota(studentId, billingContext) {
   if (billingContext?.billingProvider === 'deepseek') {
     return checkDeepSeekCostQuota(studentId);
+  }
+  if (billingContext?.billingProvider === 'glm') {
+    return checkGlmCostQuota(studentId);
   }
   return checkTokenQuota(studentId, billingContext?.billingProvider || 'mimo');
 }
@@ -212,7 +220,7 @@ async function handleProxy(req, res, protocol) {
 
     let upstreamRes;
     try {
-      upstreamRes = await fetch(`${upstream.baseUrl}${proto.path}`, {
+      upstreamRes = await fetch(getUpstreamRequestUrl(upstream, proto.path), {
         method: 'POST',
         headers: proto.headers(upstream.apiKey),
         body: JSON.stringify(requestBody),
@@ -414,7 +422,7 @@ async function handleResponsesProxy(req, res) {
     }
 
     billingContext = createBillingContext(upstream, model);
-    const quotaResult = await checkTokenQuota(req.student.studentId, billingContext.billingProvider);
+    const quotaResult = await checkBillingQuota(req.student.studentId, billingContext);
     if (!quotaResult.allowed) {
       res.set('Retry-After', '86400');
       return res.status(429).json(errJson(quotaResult.reason, 'rate_limit_error'));
@@ -433,7 +441,7 @@ async function handleResponsesProxy(req, res) {
 
     let upstreamRes;
     try {
-      upstreamRes = await fetch(`${upstream.baseUrl}/v1/chat/completions`, {
+      upstreamRes = await fetch(getUpstreamRequestUrl(upstream, '/v1/chat/completions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${upstream.apiKey}` },
         body: JSON.stringify(chatBody),

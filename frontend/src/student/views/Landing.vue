@@ -19,15 +19,9 @@ const authMode = ref<'login' | 'register'>('login');
 const registeredApiKey = ref('');
 
 const publicModelCards: ModelInfo[] = [
-  { id: 'mimo-v2.5-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2.5', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2-pro', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'mimo-v2-omni', provider: 'MiMo Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'qwen3.7-max', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'glm-5.1', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
-  { id: 'kimi-k2.6', provider: 'Aliyun Token Plan', protocols: ['openai', 'anthropic'] },
   { id: 'deepseek-v4-flash', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
   { id: 'deepseek-v4-pro', provider: 'DeepSeek Official API', protocols: ['openai', 'anthropic'] },
+  { id: 'glm-5.2', provider: '智谱 GLM Official API', protocols: ['openai'] },
 ];
 
 const publicGroups = groupModelsByProvider(publicModelCards);
@@ -56,9 +50,9 @@ async function handleAuthSuccess(apiKey?: string) {
     <TopBar />
     <section class="landing">
       <div class="hero">
-        <div class="eyebrow">Token Plan Gateway · MiMo / Aliyun / DeepSeek</div>
+        <div class="eyebrow">API Gateway · DeepSeek / GLM</div>
         <h1>学生专属的大模型 API 入口</h1>
-        <p>用白名单学号注册，领取专属 API Key。当前开放 MiMo 以及阿里云 Token Plan 文本模型，直接接入 Claude Code 或 OpenAI 兼容客户端。</p>
+        <p>用白名单学号注册，领取专属 API Key。当前开放 DeepSeek 与智谱 GLM 模型，可接入 Claude Code 或 OpenAI 兼容客户端。平台 API 将于 2026 年 8 月 31 日停止供应。</p>
         <div class="actions">
           <button class="btn primary" @click="openAuth('register')">注册领取 Key</button>
           <button class="btn" @click="openAuth('login')">登录控制台</button>

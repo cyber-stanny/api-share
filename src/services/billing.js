@@ -1,5 +1,5 @@
-const { isAliyunUpstream, isDeepSeekUpstream, isMimoUpstream } = require('./upstreamLimiter');
-const { getDeepSeekPricing, getMimoTokenMultiplier } = require('./modelCatalog');
+const { isAliyunUpstream, isDeepSeekUpstream, isGlmUpstream, isMimoUpstream } = require('./upstreamLimiter');
+const { getDeepSeekPricing, getGlmPricing, getMimoTokenMultiplier } = require('./modelCatalog');
 
 function toNumber(value) {
   const n = Number(value || 0);
@@ -27,6 +27,7 @@ function getPromptCacheMissTokens(usage) {
 function getBillingProvider(upstream) {
   if (isAliyunUpstream(upstream)) return 'aliyun';
   if (isDeepSeekUpstream(upstream)) return 'deepseek';
+  if (isGlmUpstream(upstream)) return 'glm';
   if (isMimoUpstream(upstream)) return 'mimo';
   return 'mimo';
 }
@@ -68,6 +69,21 @@ function calculateDeepSeekCostMicroCny(model, usage) {
   );
 }
 
+function calculateGlmCostMicroCny(model, usage) {
+  const pricing = getGlmPricing(model);
+  if (!pricing || !usage) return 0;
+
+  const cacheHitInputTokens = Math.min(toNumber(usage.prompt_tokens), getCachedPromptTokens(usage));
+  const cacheMissInputTokens = getPromptCacheMissTokens(usage);
+  const outputTokens = toNumber(usage.completion_tokens);
+
+  return Math.round(
+    cacheHitInputTokens * pricing.inputCacheHit
+    + cacheMissInputTokens * pricing.inputCacheMiss
+    + outputTokens * pricing.output
+  );
+}
+
 function finalizeBilling(context, model, usage) {
   if (!context) {
     return {
@@ -82,7 +98,9 @@ function finalizeBilling(context, model, usage) {
   const billingUnits = getTokenBillingUnits(model, usage, context.billingProvider);
   const billingCostMicroCny = context.billingProvider === 'deepseek'
     ? calculateDeepSeekCostMicroCny(model, usage)
-    : 0;
+    : context.billingProvider === 'glm'
+      ? calculateGlmCostMicroCny(model, usage)
+      : 0;
 
   return {
     ...context,
@@ -94,6 +112,7 @@ function finalizeBilling(context, model, usage) {
 
 module.exports = {
   calculateDeepSeekCostMicroCny,
+  calculateGlmCostMicroCny,
   createBillingContext,
   finalizeBilling,
   getBillingProvider,

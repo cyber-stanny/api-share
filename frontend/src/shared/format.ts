@@ -30,6 +30,7 @@ export function providerLabel(provider: string): string {
     'aliyun': 'Aliyun Token Plan',
     'minimax': 'MiniMax (历史)',
     'deepseek': 'DeepSeek Official API',
+    'glm': '智谱 GLM Official API',
   };
   return map[provider] || provider;
 }

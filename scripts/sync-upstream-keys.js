@@ -2,11 +2,11 @@
  * 将环境变量中的上游 API Key 同步到 CloudBase 的 upstreams 集合
  *
  * 用法：
- *   CLOUDBASE_ENV_ID=xxx DEEPSEEK_API_KEY=xxx node scripts/sync-upstream-keys.js
+ *   CLOUDBASE_ENV_ID=xxx DEEPSEEK_API_KEY=xxx GLM_API_KEY=xxx node scripts/sync-upstream-keys.js
  *
  * 说明：
  * - 不会把密钥写入仓库，只更新数据库中的 upstream 记录
- * - 会同步当前环境变量中已设置的 MiMo / Aliyun / DeepSeek Key
+ * - 当前生产使用 DeepSeek 与智谱 GLM；MiMo / Aliyun 变量保留用于历史记录兼容
  */
 require('dotenv').config();
 const cloudbase = require('@cloudbase/node-sdk');
@@ -28,6 +28,9 @@ async function main() {
         name: preset.name,
         protocol: preset.protocol,
         provider: preset.provider,
+        baseUrl: preset.baseUrl,
+        models: preset.models,
+        apiPath: preset.apiPath || null,
         apiKey,
         envName: preset.apiKeyEnv,
       });
@@ -35,7 +38,7 @@ async function main() {
   }
 
   if (syncPresets.length === 0) {
-    console.error('请至少设置一个上游 Key 环境变量：MIMO_API_KEY / ALIYUN_API_KEY / DEEPSEEK_API_KEY');
+    console.error('请至少设置 DEEPSEEK_API_KEY 或 GLM_API_KEY；MiMo / Aliyun 已停用');
     process.exit(1);
   }
 
@@ -47,7 +50,7 @@ async function main() {
   const db = app.database();
 
   let totalUpdated = 0;
-  for (const { name, protocol, provider, apiKey, envName } of syncPresets) {
+  for (const { name, protocol, provider, baseUrl, models, apiPath, apiKey, envName } of syncPresets) {
     const { data } = await db.collection('upstreams')
       .where({ name, protocol })
       .limit(1)
@@ -62,6 +65,9 @@ async function main() {
     await db.collection('upstreams').doc(upstream._id).update({
       apiKey,
       provider: upstream.provider || provider,
+      baseUrl,
+      models,
+      apiPath,
       updatedAt: new Date(),
     });
     totalUpdated++;
