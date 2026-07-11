@@ -1,5 +1,4 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { useAuthStore } from './stores/auth';
 
 const Students = () => import('./views/Students.vue');
 const Whitelist = () => import('./views/Whitelist.vue');
@@ -15,13 +14,6 @@ const router = createRouter({
     { path: '/usage', component: UsageLog },
     { path: '/usage-summary', component: UsageSummary },
   ],
-});
-
-router.beforeEach((to) => {
-  const auth = useAuthStore();
-  if (!auth.isLoggedIn && to.path !== '/login') {
-    return '/students';
-  }
 });
 
 export default router;

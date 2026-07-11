@@ -6,6 +6,13 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('studentToken'));
   const isLoggedIn = computed(() => !!token.value);
 
+  window.addEventListener('api-share:auth-expired', (event) => {
+    const detail = (event as CustomEvent<{ scope?: string }>).detail;
+    if (detail?.scope === 'student') {
+      token.value = null;
+    }
+  });
+
   async function login(studentId: string, password: string) {
     const data = await api<{ token: string }>('/api/auth/login', {
       method: 'POST',

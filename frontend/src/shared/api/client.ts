@@ -16,9 +16,11 @@ export interface ApiOptions extends RequestInit {
   token?: string;
 }
 
-function getStoredTokenForPath(path: string): string | null {
+type AuthScope = 'admin' | 'student';
+
+function getAuthScopeForPath(path: string): AuthScope | null {
   if (path.startsWith('/api/admin/') && path !== '/api/admin/login') {
-    return localStorage.getItem('adminToken');
+    return 'admin';
   }
 
   if (path.startsWith('/api/auth/')) {
@@ -28,15 +30,32 @@ function getStoredTokenForPath(path: string): string | null {
       '/api/auth/reset-password',
     ]);
     if (!publicPaths.has(path)) {
-      return localStorage.getItem('studentToken');
+      return 'student';
     }
   }
 
   return null;
 }
 
+function clearStoredToken(scope: AuthScope) {
+  localStorage.removeItem(scope === 'admin' ? 'adminToken' : 'studentToken');
+  window.dispatchEvent(new CustomEvent('api-share:auth-expired', { detail: { scope } }));
+}
+
+function getStoredTokenForPath(path: string): string | null {
+  const scope = getAuthScopeForPath(path);
+  if (scope === 'admin') {
+    return localStorage.getItem('adminToken');
+  }
+  if (scope === 'student') {
+    return localStorage.getItem('studentToken');
+  }
+  return null;
+}
+
 export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise<T> {
   const { token, headers, ...rest } = opts;
+  const authScope = getAuthScopeForPath(path);
   const authHeaders: Record<string, string> = {};
   const resolvedToken = token || getStoredTokenForPath(path);
   if (resolvedToken) authHeaders.Authorization = `Bearer ${resolvedToken}`;
@@ -54,7 +73,13 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) {
-    throw new Error(data.error || data.error?.message || '请求失败');
+    if (res.status === 401 && authScope) {
+      clearStoredToken(authScope);
+    }
+    const errorMessage = typeof data.error === 'string'
+      ? data.error
+      : data.error?.message || '请求失败';
+    throw new Error(errorMessage);
   }
   return data.data as T;
 }
