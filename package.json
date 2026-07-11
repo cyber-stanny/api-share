@@ -11,6 +11,8 @@
     "sync:upstreams": "node scripts/sync-upstream-keys.js",
     "reconcile:upstreams": "node scripts/reconcile-upstreams.js",
     "reconcile:upstreams:apply": "node scripts/reconcile-upstreams.js --apply",
+    "migrate:glm-quotas": "node scripts/update-glm-quotas.js",
+    "migrate:glm-quotas:apply": "node scripts/update-glm-quotas.js --apply",
     "dev:frontend": "npm --prefix frontend run dev",
     "build:frontend": "npm --prefix frontend run build"
   },

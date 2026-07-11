@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { api, escapeHtml } from '@shared/api/client';
-import { fmtCny, fmtTokens } from '@shared/format';
+import { fmtCny } from '@shared/format';
 import type { Quota, User } from '@shared/api/types';
 import QuotaEditor from '../components/QuotaEditor.vue';
 
@@ -14,8 +14,8 @@ const DEFAULT_QUOTA: Quota = {
   aliyunWeeklyTokenLimit: 8000000,
   deepseekDailyCostLimitCny: 5,
   deepseekWeeklyCostLimitCny: 20,
-  glmDailyCostLimitCny: 5,
-  glmWeeklyCostLimitCny: 20,
+  glmDailyCostLimitCny: 10,
+  glmWeeklyCostLimitCny: 50,
 };
 
 const students = ref<User[]>([]);
@@ -24,6 +24,8 @@ const error = ref('');
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(100);
+const tags = ref<string[]>([]);
+const selectedTag = ref('');
 const showQuotaEditor = ref(false);
 const editingStudent = ref<{
   id: string; studentId: string;
@@ -37,8 +39,6 @@ const addForm = ref({
   studentId: '',
   name: '',
   password: '',
-  dailyTokenLimit: DEFAULT_QUOTA.dailyTokenLimit,
-  weeklyTokenLimit: DEFAULT_QUOTA.weeklyTokenLimit,
 });
 const resetForm = ref({
   id: '',
@@ -50,14 +50,22 @@ async function loadStudents() {
   loading.value = true;
   error.value = '';
   try {
-    const data = await api<{ students: User[]; total: number }>(`/api/admin/students?page=${page.value}&pageSize=${pageSize.value}`);
+    const params = new URLSearchParams({ page: String(page.value), pageSize: String(pageSize.value) });
+    if (selectedTag.value) params.set('tag', selectedTag.value);
+    const data = await api<{ students: User[]; total: number; tags: string[] }>(`/api/admin/students?${params.toString()}`);
     students.value = data.students;
     total.value = data.total;
+    tags.value = data.tags;
   } catch (e: any) {
     error.value = e.message || '加载失败';
   } finally {
     loading.value = false;
   }
+}
+
+function filterByTag() {
+  page.value = 1;
+  loadStudents();
 }
 
 function prevPage() {
@@ -93,8 +101,6 @@ function openAddDialog() {
     studentId: '',
     name: '',
     password: '',
-    dailyTokenLimit: DEFAULT_QUOTA.dailyTokenLimit,
-    weeklyTokenLimit: DEFAULT_QUOTA.weeklyTokenLimit,
   };
   addError.value = '';
   showAddDialog.value = true;
@@ -110,7 +116,12 @@ async function handleQuotaSave(quota: Quota) {
   if (!editingStudent.value) return;
   await api(`/api/admin/students/${editingStudent.value.id}/quota`, {
     method: 'PUT',
-    body: JSON.stringify(quota),
+    body: JSON.stringify({
+      deepseekDailyCostLimitCny: quota.deepseekDailyCostLimitCny,
+      deepseekWeeklyCostLimitCny: quota.deepseekWeeklyCostLimitCny,
+      glmDailyCostLimitCny: quota.glmDailyCostLimitCny,
+      glmWeeklyCostLimitCny: quota.glmWeeklyCostLimitCny,
+    }),
   });
   showQuotaEditor.value = false;
   loadStudents();
@@ -146,8 +157,17 @@ onMounted(loadStudents);
 <template>
   <div class="students-page">
     <div class="page-header">
-      <h2>学生列表</h2>
-      <button class="btn primary btn-sm" @click="openAddDialog">添加学生</button>
+      <div>
+        <h2>学生列表</h2>
+        <p class="page-subtitle">按白名单标签筛选学生，查看当前 DeepSeek 与 GLM 用量。</p>
+      </div>
+      <div class="page-actions">
+        <select v-model="selectedTag" class="tag-filter" @change="filterByTag">
+          <option value="">全部标签</option>
+          <option v-for="tag in tags" :key="tag" :value="tag">{{ tag }}</option>
+        </select>
+        <button class="btn primary btn-sm" @click="openAddDialog">添加学生</button>
+      </div>
     </div>
 
     <div v-if="error" class="state-msg err">{{ error }}</div>
@@ -159,39 +179,22 @@ onMounted(loadStudents);
           <tr>
             <th>学号 / 姓名</th>
             <th>Key</th>
-            <th>MiMo Token</th>
             <th>智谱 GLM Official API</th>
-            <th>Aliyun Token Plan</th>
             <th>DeepSeek Official API</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="7" class="empty">加载中…</td>
+            <td colspan="5" class="empty">加载中…</td>
           </tr>
           <tr v-else v-for="s in students" :key="s._id">
             <td>
               <div class="cell-primary">{{ escapeHtml(s.studentId) }}</div>
               <div class="cell-sub">{{ escapeHtml(s.name) || '—' }}</div>
+              <span v-if="s.tag" class="tag-badge">{{ escapeHtml(s.tag) }}</span>
             </td>
             <td><code>{{ escapeHtml(s.apiKeyPrefix) }}…</code></td>
-            <td>
-              <div class="usage-row">
-                <span class="usage-label">日</span>
-                <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.dailyTokensUsed, s.quota?.mimoDailyTokenLimit || 0) + '%', background: barColor(usagePct(s.dailyTokensUsed, s.quota?.mimoDailyTokenLimit || 0)) }"></span>
-                </div>
-                <span class="usage-val">{{ fmtTokens(s.dailyTokensUsed) }} / {{ fmtTokens(s.quota?.mimoDailyTokenLimit || 0) }}</span>
-              </div>
-              <div class="usage-row">
-                <span class="usage-label">周</span>
-                <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.weeklyTokensUsed, s.quota?.mimoWeeklyTokenLimit || 0) + '%', background: barColor(usagePct(s.weeklyTokensUsed, s.quota?.mimoWeeklyTokenLimit || 0)) }"></span>
-                </div>
-                <span class="usage-val">{{ fmtTokens(s.weeklyTokensUsed) }} / {{ fmtTokens(s.quota?.mimoWeeklyTokenLimit || 0) }}</span>
-              </div>
-            </td>
             <td>
               <div class="usage-row">
                 <span class="usage-label">日</span>
@@ -206,22 +209,6 @@ onMounted(loadStudents);
                   <span :style="{ width: usagePct(s.glmWeeklyCostCny || 0, s.quota?.glmWeeklyCostLimitCny || 0) + '%', background: barColor(usagePct(s.glmWeeklyCostCny || 0, s.quota?.glmWeeklyCostLimitCny || 0)) }"></span>
                 </div>
                 <span class="usage-val">¥{{ fmtCny(s.glmWeeklyCostCny || 0) }} / ¥{{ fmtCny(s.quota?.glmWeeklyCostLimitCny || 0) }}</span>
-              </div>
-            </td>
-            <td>
-              <div class="usage-row">
-                <span class="usage-label">日</span>
-                <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.aliyunDailyTokensUsed || 0, s.quota?.aliyunDailyTokenLimit || 0) + '%', background: barColor(usagePct(s.aliyunDailyTokensUsed || 0, s.quota?.aliyunDailyTokenLimit || 0)) }"></span>
-                </div>
-                <span class="usage-val">{{ fmtTokens(s.aliyunDailyTokensUsed || 0) }} / {{ fmtTokens(s.quota?.aliyunDailyTokenLimit || 0) }}</span>
-              </div>
-              <div class="usage-row">
-                <span class="usage-label">周</span>
-                <div class="mini-bar">
-                  <span :style="{ width: usagePct(s.aliyunWeeklyTokensUsed || 0, s.quota?.aliyunWeeklyTokenLimit || 0) + '%', background: barColor(usagePct(s.aliyunWeeklyTokensUsed || 0, s.quota?.aliyunWeeklyTokenLimit || 0)) }"></span>
-                </div>
-                <span class="usage-val">{{ fmtTokens(s.aliyunWeeklyTokensUsed || 0) }} / {{ fmtTokens(s.quota?.aliyunWeeklyTokenLimit || 0) }}</span>
               </div>
             </td>
             <td>
@@ -246,7 +233,7 @@ onMounted(loadStudents);
             </td>
           </tr>
           <tr v-if="!loading && students.length === 0">
-            <td colspan="7" class="empty">暂无学生数据</td>
+            <td colspan="5" class="empty">{{ selectedTag ? '该标签下暂无已注册学生' : '暂无学生数据' }}</td>
           </tr>
         </tbody>
       </table>
@@ -284,14 +271,6 @@ onMounted(loadStudents);
             <label>
               <span>初始密码</span>
               <input v-model="addForm.password" class="input" type="password" />
-            </label>
-            <label>
-              <span>每日 Token 上限</span>
-              <input v-model.number="addForm.dailyTokenLimit" class="input" type="number" min="0" />
-            </label>
-            <label>
-              <span>每周 Token 上限</span>
-              <input v-model.number="addForm.weeklyTokenLimit" class="input" type="number" min="0" />
             </label>
           </div>
           <div class="modal-actions">
@@ -343,6 +322,16 @@ onMounted(loadStudents);
   margin-bottom: 20px;
 }
 .page-header h2 { margin: 0; font: 700 20px var(--serif); }
+.page-subtitle { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.page-actions { display: flex; align-items: center; gap: 8px; }
+.tag-filter {
+  min-width: 180px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
 .card {
   background: var(--surface);
   border-radius: 8px;
@@ -360,6 +349,16 @@ th { background: var(--bg); font-weight: 600; color: var(--muted); font-size: 11
 code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px var(--mono); }
 .cell-primary { font-weight: 600; }
 .cell-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.tag-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 11px;
+  white-space: nowrap;
+}
 .usage-row {
   display: flex;
   align-items: center;
@@ -440,5 +439,7 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font: 12px v
 .page-info { font-size: 13px; color: var(--muted); margin-right: auto; }
 @media (max-width: 900px) {
   .form-grid { grid-template-columns: 1fr; }
+  .page-header { align-items: flex-start; gap: 12px; }
+  .page-actions { align-items: stretch; flex-direction: column; }
 }
 </style>

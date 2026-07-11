@@ -85,8 +85,8 @@ onMounted(loadUsage);
         />
         <select v-model="provider" class="input input-select">
           <option value="">全部供应商</option>
-          <option value="mimo">MiMo</option>
-          <option value="aliyun">Aliyun Token Plan</option>
+          <option value="mimo">MiMo（历史）</option>
+          <option value="aliyun">Aliyun Token Plan（历史）</option>
           <option value="minimax">MiniMax（历史）</option>
           <option value="deepseek">DeepSeek Official API</option>
           <option value="glm">智谱 GLM Official API</option>

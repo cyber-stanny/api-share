@@ -65,15 +65,9 @@ function validateWeeklyLimits({
 }
 
 function validateQuotaAgainstUsage(quota, counter) {
-  const mimoUsage = getTokenUsage(counter, 'mimo');
-  const aliyunUsage = getTokenUsage(counter, 'aliyun');
   const deepseekUsage = getTokenUsage(counter, 'deepseek');
   const glmUsage = getTokenUsage(counter, 'glm');
   const checks = [
-    ['mimoDailyTokenLimit', quota.mimoDailyTokenLimit, mimoUsage.dailyTokens, 'MiMo 今日 token 额度不能低于已用量'],
-    ['mimoWeeklyTokenLimit', quota.mimoWeeklyTokenLimit, mimoUsage.weeklyTokens, 'MiMo 本周 token 额度不能低于已用量'],
-    ['aliyunDailyTokenLimit', quota.aliyunDailyTokenLimit, aliyunUsage.dailyTokens, 'Aliyun 今日 token 额度不能低于已用量'],
-    ['aliyunWeeklyTokenLimit', quota.aliyunWeeklyTokenLimit, aliyunUsage.weeklyTokens, 'Aliyun 本周 token 额度不能低于已用量'],
     ['deepseekDailyCostLimitCny', quota.deepseekDailyCostLimitCny, deepseekUsage.dailyCostCny, 'DeepSeek 今日金额额度不能低于已用量'],
     ['deepseekWeeklyCostLimitCny', quota.deepseekWeeklyCostLimitCny, deepseekUsage.weeklyCostCny, 'DeepSeek 本周金额额度不能低于已用量'],
     ['glmDailyCostLimitCny', quota.glmDailyCostLimitCny, glmUsage.dailyCostCny, 'GLM 今日金额额度不能低于已用量'],
@@ -110,6 +104,19 @@ function validateUsageFilters({ studentId, model, provider, groupBy }) {
 
 function isValidShortText(value, maxLength) {
   return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength;
+}
+
+async function listAllDocuments(collectionName, orderField) {
+  const batchSize = 100;
+  const documents = [];
+
+  while (true) {
+    let query = db.collection(collectionName);
+    if (orderField) query = query.orderBy(orderField, 'desc');
+    const { data = [] } = await query.skip(documents.length).limit(batchSize).get();
+    documents.push(...data);
+    if (data.length < batchSize) return documents;
+  }
 }
 
 // 管理员登录
@@ -155,12 +162,34 @@ router.get('/students', adminAuth, async (req, res) => {
     const pageParams = parsePageParams(req.query, 20);
     if (pageParams.error) return error(res, pageParams.error);
     const { page, pageSize } = pageParams;
+    const selectedTag = String(req.query.tag || '').trim();
+    if (selectedTag.length > 64) return error(res, 'tag 不能超过 64 个字符');
 
-    const { data: students, total } = await db.collection('users')
-      .orderBy('createdAt', 'desc')
-      .skip((page - 1) * pageSize)
-      .limit(pageSize)
-      .get();
+    // 标签的权威来源仍是白名单。这样已注册的历史学生无需迁移，也能立即按班级筛选。
+    const whitelist = await listAllDocuments('whitelist');
+    const tagByStudentId = new Map(
+      whitelist
+        .filter(item => String(item.tag || '').trim())
+        .map(item => [item.studentId, String(item.tag).trim()])
+    );
+    const tags = Array.from(new Set(tagByStudentId.values())).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+
+    let students;
+    let total;
+    if (selectedTag) {
+      const allStudents = await listAllDocuments('users', 'createdAt');
+      const filteredStudents = allStudents.filter(student => tagByStudentId.get(student.studentId) === selectedTag);
+      total = filteredStudents.length;
+      students = filteredStudents.slice((page - 1) * pageSize, page * pageSize);
+    } else {
+      const result = await db.collection('users')
+        .orderBy('createdAt', 'desc')
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .get();
+      students = result.data;
+      total = result.total;
+    }
 
     // 批量查 token 用量，读取前先按北京时间校准日/周计数。
     const studentsWithUsage = await Promise.all(students.map(async (s) => {
@@ -171,6 +200,7 @@ router.get('/students', adminAuth, async (req, res) => {
         _id: s._id,
         studentId: s.studentId,
         name: s.name,
+        tag: tagByStudentId.get(s.studentId) || s.tag || '',
         apiKeyPrefix: s.apiKeyPrefix,
         quota: getEffectiveTokenQuota(s.quota || config.defaultQuota),
         ...usage,
@@ -178,7 +208,7 @@ router.get('/students', adminAuth, async (req, res) => {
       };
     }));
 
-    return success(res, { students: studentsWithUsage, total, page, pageSize });
+    return success(res, { students: studentsWithUsage, total, page, pageSize, tags, selectedTag });
   } catch (err) {
     console.error('List students error:', err);
     return error(res, '查询失败', 500);

@@ -60,8 +60,8 @@ const config = {
     aliyunWeeklyTokenLimit: 8000000,
     deepseekDailyCostLimitCny: parseFloat(process.env.DEEPSEEK_DAILY_COST_LIMIT_CNY || '5'),
     deepseekWeeklyCostLimitCny: parseFloat(process.env.DEEPSEEK_WEEKLY_COST_LIMIT_CNY || '20'),
-    glmDailyCostLimitCny: parseFloat(process.env.GLM_DAILY_COST_LIMIT_CNY || '5'),
-    glmWeeklyCostLimitCny: parseFloat(process.env.GLM_WEEKLY_COST_LIMIT_CNY || '20'),
+    glmDailyCostLimitCny: parseFloat(process.env.GLM_DAILY_COST_LIMIT_CNY || '10'),
+    glmWeeklyCostLimitCny: parseFloat(process.env.GLM_WEEKLY_COST_LIMIT_CNY || '50'),
   },
 
   // DeepSeek 默认额度（按人民币金额计算）
@@ -70,8 +70,8 @@ const config = {
     weeklyCostLimitCny: parseFloat(process.env.DEEPSEEK_WEEKLY_COST_LIMIT_CNY || '20'),
   },
   defaultGlmQuota: {
-    dailyCostLimitCny: parseFloat(process.env.GLM_DAILY_COST_LIMIT_CNY || '5'),
-    weeklyCostLimitCny: parseFloat(process.env.GLM_WEEKLY_COST_LIMIT_CNY || '20'),
+    dailyCostLimitCny: parseFloat(process.env.GLM_DAILY_COST_LIMIT_CNY || '10'),
+    weeklyCostLimitCny: parseFloat(process.env.GLM_WEEKLY_COST_LIMIT_CNY || '50'),
   },
 };
 

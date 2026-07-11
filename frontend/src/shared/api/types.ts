@@ -2,6 +2,7 @@ export interface User {
   _id: string;
   studentId: string;
   name?: string;
+  tag?: string;
   apiKeyPrefix: string;
   quota: {
     dailyTokenLimit: number;

@@ -31,30 +31,6 @@ function handleSave() {
     <div v-if="visible" class="modal-overlay" @click.self="emit('close')">
       <div class="modal">
         <h3>调整额度 - {{ studentId }}</h3>
-        <div class="section-label">MiMo token 限额</div>
-        <div class="form-row">
-          <div class="field">
-            <label>每日 token 上限</label>
-            <input v-model.number="form.mimoDailyTokenLimit" class="input" type="number" min="0" />
-          </div>
-          <div class="field">
-            <label>每周 token 上限</label>
-            <input v-model.number="form.mimoWeeklyTokenLimit" class="input" type="number" min="0" />
-          </div>
-        </div>
-
-        <div class="section-label">Aliyun Token Plan 限额</div>
-        <div class="form-row">
-          <div class="field">
-            <label>每日 token 上限</label>
-            <input v-model.number="form.aliyunDailyTokenLimit" class="input" type="number" min="0" />
-          </div>
-          <div class="field">
-            <label>每周 token 上限</label>
-            <input v-model.number="form.aliyunWeeklyTokenLimit" class="input" type="number" min="0" />
-          </div>
-        </div>
-
         <div class="section-label">DeepSeek 金额限额</div>
         <div class="form-row">
           <div class="field">

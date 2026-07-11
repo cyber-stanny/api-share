@@ -110,6 +110,7 @@ router.post('/register', studentRegisterLimiter, async (req, res) => {
     await db.collection('users').add({
       studentId,
       name: name || '',
+      tag: String(whitelist[0].tag || '').trim(),
       passwordHash,
       apiKeyHash,
       apiKeyPrefix,
